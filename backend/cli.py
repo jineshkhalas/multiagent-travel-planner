@@ -1,11 +1,15 @@
 import asyncio
 import json
 import os
-import requests
+import sys
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
+# Ensure backend dir is in sys.path
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from google.adk.agents import LlmAgent
 from google.adk.models import LiteLlm
 from google.adk.runners import Runner
@@ -22,28 +26,7 @@ env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
-def get_agent_card_path(port: int, name: str) -> str:
-    file_path = os.path.join(os.path.dirname(__file__), f"fixed_card_{port}.json")
-    if os.path.exists(file_path):
-        return file_path
-    
-    try:
-        url = f"http://127.0.0.1:{port}/.well-known/agent-card.json"
-        card_data = requests.get(url, timeout=3).json()
-        card_data["supportedInterfaces"][0]["url"] = f"http://127.0.0.1:{port}"
-        with open(file_path, "w") as f:
-            json.dump(card_data, f)
-        return file_path
-    except Exception as e:
-        print(f"[CLI] Warning: Could not fetch live card for {name} on port {port}: {e}")
-        return file_path
-
 groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
-
-weather_sub = RemoteA2aAgent(name="WeatherRemote", agent_card=get_agent_card_path(8001, "Weather"))
-attractions_sub = RemoteA2aAgent(name="AttractionsRemote", agent_card=get_agent_card_path(8002, "Attractions"))
-flights_sub = RemoteA2aAgent(name="FlightsRemote", agent_card=get_agent_card_path(8003, "Flights"))
-hotels_sub = RemoteA2aAgent(name="HotelsRemote", agent_card=get_agent_card_path(8004, "Hotels"))
 
 context_agent = LlmAgent(
     name="ContextResolverAgent",
@@ -66,39 +49,80 @@ RULES:
 formatting_agent = LlmAgent(
     name="FormattingAgent",
     model=groq_model,
-    instruction="""You are a master travel planner. Your job is to format and compile the specialist sub-agent data into a crisp, cohesive, and realistic travel itinerary.
+    instruction="""You are a master travel planner. Your job is to format and compile the specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
 
-CRITICAL ANTI-HALLUCINATION & GEOGRAPHIC RULES:
+CRITICAL RULES:
 1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
-   - ABSOLUTELY NEVER add random distant cities (e.g. Udaipur, Agra, Delhi, Jaipur, Chennai, Goa) unless explicitly in the user's requested destinations!
-   - Transit must be realistic (e.g. Mumbai to Lonavala is ~85 km by train/cab, NOT 1400 km).
+   - ABSOLUTELY NEVER add random distant cities unless explicitly requested!
 2. MULTI-DAY ITINERARY STRUCTURE:
    - Generate EXACTLY the requested number of days.
-   - Divide days logically between the destinations.
-   - If this is a modification of a previous plan, maintain continuity for the original days and seamlessly blend in the new days.
-3. ALL PRICES IN INR (₹):
-   - All flight fares, train tickets, hotel tariffs, activity fees, and meal budgets MUST be strictly formatted in INR (₹). Never use $ symbols.
-4. NO EMOJIS IN HEADERS OR TEXT:
-   - Do NOT output raw emoji characters (like ✈️, 🌤️, 🏨, 🗺️, 🌅, 🌇, 🚕). Use clean markdown section headers so the frontend UI can render Lucide vector icons automatically.
+   - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
+     - **Morning**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
+     - **Afternoon**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
+     - **Evening**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Dinner / Leisure: ₹]
+     NEVER skip Afternoon or Evening on any day!
+3. FLIGHTS & TRAINS STRUCTURE:
+   - Under "#### Flights", list up to 3 distinct flight options formatted as:
+     - **Flight 1**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+     - **Flight 2**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+     - **Flight 3**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+   - Under "#### Trains", list up to 3 distinct train options formatted as:
+     - **Train 1**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+     - **Train 2**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+     - **Train 3**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+   - Under "#### Road & Local Transit", provide estimated road distance, drive time, and cab fare in ₹.
+4. HOTEL TIERS (EXACTLY 2 HOTELS PER CATEGORY):
+   - Under "#### Luxury / 5-Star / 7-Star Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
+   - Under "#### Premium / 3-Star & 4-Star Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
+   - Under "#### Budget & Cheap Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
+5. WEATHER & PACKING:
+   - Bullet points with Temperature, Condition, Humidity, Wind, and practical packing advice (clothing/essentials).
+6. ALL PRICES IN INR (₹):
+   - Never use $ symbols. All costs must be in INR (₹).
+7. NO RAW EMOJIS:
+   - Do NOT output raw emoji characters (like ✈️, 🌤️, 🏨, 🗺️, 🌅, 🌇, 🚕). Use clean markdown headers so the frontend UI can render vector icons automatically.
 
-OUTPUT FORMAT:
+STRICT OUTPUT TEMPLATE:
 
 ### Flights & Transit Options
-- Origin to Destination transit (Airlines, Schedules, Fares in ₹)
-- Inter-city transit between destinations (Train / Cab / Expressway details with fare in ₹)
+#### Flights
+- **Flight 1**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **Flight 2**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **Flight 3**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+
+#### Trains
+- **Train 1**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **Train 2**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **Train 3**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+
+#### Road & Local Transit
+- Road Distance: ~[X] km | Estimated Drive Time: ~[Y] hours | Typical Cab Fare: ₹[Amount]
 
 ### Weather Conditions
-- Bullet points for each destination with live temperature, condition, humidity, and packing tips.
+#### Live Weather & Packing Tips
+- **Temperature & Condition**: [Current Temp]°C, [Condition]
+- **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
+- **Packing Advice**: [Practical clothing & travel essentials advice]
 
 ### Recommended Accommodations
-- Real hotel recommendations for each destination city with price per night in ₹.
+#### Luxury / 5-Star / 7-Star Stays (Top 2)
+- **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+- **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+
+#### Premium / 3-Star & 4-Star Stays (Top 2)
+- **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+- **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+
+#### Budget & Cheap Stays (Top 2)
+- **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+- **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
 
 ### Detailed Day-by-Day Itinerary
 For each Day (Day 1 to the final Day):
-- **Day X: [City/Region Theme]**
-  - **Morning**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
-  - **Afternoon**: [Activity 1] • [Activity 2]
-  - **Evening**: [Activity 1] • [Activity 2]
+#### Day X: [City/Region Theme]
+- **Morning**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
+- **Afternoon**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
+- **Evening**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Dinner / Leisure: ₹]
 """
 )
 
@@ -107,13 +131,9 @@ class PlannerFlow:
         self.session_svc = InMemorySessionService()
         self.context_runner = Runner(app_name="Ctx", agent=context_agent, session_service=self.session_svc, auto_create_session=True)
         self.format_runner = Runner(app_name="Fmt", agent=formatting_agent, session_service=self.session_svc, auto_create_session=True)
-        self.weather_runner = Runner(app_name="Wth", agent=weather_sub, session_service=self.session_svc, auto_create_session=True)
-        self.attr_runner = Runner(app_name="Attr", agent=attractions_sub, session_service=self.session_svc, auto_create_session=True)
-        self.flight_runner = Runner(app_name="Flt", agent=flights_sub, session_service=self.session_svc, auto_create_session=True)
-        self.hotel_runner = Runner(app_name="Htl", agent=hotels_sub, session_service=self.session_svc, auto_create_session=True)
 
-    async def run_agent(self, runner, prompt: str, fallback_func=None, *fallback_args) -> str:
-        """Runs agent runner with retry on rate limits and automatic fallback to direct tools."""
+    async def run_llm_agent(self, runner, prompt: str) -> str:
+        """Runs agent runner with retry on rate limits."""
         message = types.Content(role="user", parts=[types.Part(text=prompt)])
         
         for attempt in range(4):
@@ -132,12 +152,6 @@ class PlannerFlow:
                 else:
                     print(f"[*] Error running {runner.app_name}: {e}")
                     break
-
-        if fallback_func:
-            try:
-                return await asyncio.to_thread(fallback_func, *fallback_args)
-            except Exception as fe:
-                print(f"[*] Direct tool fallback error: {fe}")
 
         return "Data unavailable"
 
@@ -164,7 +178,7 @@ NEW USER MESSAGE:
 Extract and resolve persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
 """
         print("[System] Resolving trip context with conversation memory...")
-        ctx_response = await self.run_agent(self.context_runner, context_prompt)
+        ctx_response = await self.run_llm_agent(self.context_runner, context_prompt)
         
         source = "Unknown"
         destinations = []
@@ -201,6 +215,12 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
                 destinations = ["Mumbai"]
             elif "goa" in lower_msg:
                 destinations = ["Goa"]
+            elif "matheran" in lower_msg:
+                destinations = ["Matheran"]
+            elif "jaipur" in lower_msg:
+                destinations = ["Jaipur"]
+            elif "varanasi" in lower_msg:
+                destinations = ["Varanasi"]
             else:
                 destinations = ["Delhi"]
 
@@ -208,67 +228,41 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
             lower_msg = request.lower()
             if "ahmedabad" in lower_msg:
                 source = "Ahmedabad"
-            elif "mumbai" in lower_msg and "to delhi" in lower_msg:
+            elif "mumbai" in lower_msg and "to" in lower_msg:
                 source = "Mumbai"
+            elif "delhi" in lower_msg and "from delhi" in lower_msg:
+                source = "Delhi"
+            elif "pune" in lower_msg:
+                source = "Pune"
 
         primary_dest = destinations[0] if destinations else "Delhi"
         all_dest_str = ", ".join(destinations)
 
         print(f"\n🌍 Trip Context: Source: '{source}', Destinations: {destinations}, Duration: {duration_days} Days, Modification: {is_mod}\n")
-
-        print(f"[*] Querying 4 A2A Specialist Agents for: {all_dest_str}...")
+        print(f"[*] Querying Specialist Agents for {all_dest_str}...")
 
         tasks = []
 
+        # 1. Weather
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.weather_runner, 
-                f"What is the live weather forecast in {dest}?",
-                get_weather,
-                dest
-            ))
+            tasks.append(asyncio.to_thread(get_weather, dest))
 
+        # 2. Flights & Transit
         if source and source != "Unknown":
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find real flight and train options from {source} to {primary_dest} with prices in INR.",
-                search_flights,
-                source,
-                primary_dest
-            ))
+            tasks.append(asyncio.to_thread(search_flights, source, primary_dest))
         else:
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find popular flight routes and transit options to {primary_dest}.",
-                search_flights,
-                "Major Hubs",
-                primary_dest
-            ))
+            tasks.append(asyncio.to_thread(search_flights, "Major Hubs", primary_dest))
 
         if len(destinations) > 1:
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find transit options, cabs, buses, and trains between {destinations[0]} and {destinations[1]} with travel time and fares.",
-                search_flights,
-                destinations[0],
-                destinations[1]
-            ))
+            tasks.append(asyncio.to_thread(search_flights, destinations[0], destinations[1]))
 
+        # 3. Hotels
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.hotel_runner, 
-                f"Find real named hotels, boutique stays, and resorts in {dest} with prices in INR (₹).",
-                search_hotels,
-                dest
-            ))
+            tasks.append(asyncio.to_thread(search_hotels, dest))
 
+        # 4. Attractions
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.attr_runner, 
-                f"Give me top attractions, sightseeing spots, ticket fees, local transport costs, and food spots in {dest}.",
-                get_attractions,
-                dest
-            ))
+            tasks.append(asyncio.to_thread(get_attractions, dest))
 
         subagent_results = await asyncio.gather(*tasks, return_exceptions=True)
         subagent_text = "\n---\n".join([str(r) for r in subagent_results if not isinstance(r, Exception)])
@@ -289,8 +283,8 @@ RAW RETRIEVED SUB-AGENT DATA:
 USER REQUEST:
 {request}
 """
-        print("[*] Synthesizing verified, anti-hallucinated itinerary with INR (₹) pricing...")
-        final_itinerary = await self.run_agent(self.format_runner, format_context)
+        print("[*] Synthesizing verified, anti-hallucinated itinerary with strict structure...")
+        final_itinerary = await self.run_llm_agent(self.format_runner, format_context)
 
         return {
             "source": source,

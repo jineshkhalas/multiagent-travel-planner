@@ -48,7 +48,7 @@ def geocode_city(city: str):
     return None, None
 
 def fetch_api_route_info(source: str, destination: str) -> str:
-    """Uses geocoding and aviation/routing APIs to get accurate distance and transit feasibility."""
+    """Uses geocoding and distance calculations to get accurate road and air distances."""
     try:
         s_lat, s_lon = geocode_city(source)
         d_lat, d_lon = geocode_city(destination)
@@ -57,77 +57,81 @@ def fetch_api_route_info(source: str, destination: str) -> str:
             dist_km = calculate_distance_km(s_lat, s_lon, d_lat, d_lon)
             approx_drive_km = round(dist_km * 1.25)
             approx_drive_hours = round(approx_drive_km / 65, 1)
+            approx_cab_fare = round(approx_drive_km * 14)
 
             return (
-                f"- Geographic Direct Distance: ~{dist_km} km\n"
-                f"- Approx Road Distance: ~{approx_drive_km} km (estimated driving time: ~{approx_drive_hours} hours)"
+                f"- Road Distance: ~{approx_drive_km} km\n"
+                f"- Estimated Drive Time: ~{approx_drive_hours} hours\n"
+                f"- Estimated Cab Fare: ₹{approx_cab_fare:,}"
             )
     except Exception as e:
         print(f"[FlightsAgent] Route distance API failed: {e}")
 
     return ""
 
-def fetch_web_transit(source: str, destination: str) -> list:
-    """Searches live web for real flights, train routes (IRCTC/Vande Bharat), and cab fares with compact snippets."""
-    query = f"flights trains cab transit from {source} to {destination} ticket fare schedule INR rupees"
-    
+def search_query(query: str, max_res: int = 3) -> list:
+    """Helper to query Tavily with DDGS fallback."""
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
             client = TavilyClient(api_key=tavily_key)
-            response = client.search(query=query, search_depth="basic", max_results=3)
-            results = [f"- {res['title']}: {res['content'][:180]}" for res in response.get('results', [])]
+            response = client.search(query=query, search_depth="basic", max_results=max_res)
+            results = [f"- {res['title']}: {res['content'][:200]}" for res in response.get('results', [])]
             if results:
                 return results
         except Exception as e:
-            print(f"[FlightsAgent] Tavily transit search failed: {e}")
+            print(f"[FlightsAgent] Tavily search error: {e}")
 
     try:
-        results = DDGS().text(query, max_results=3)
+        results = DDGS().text(query, max_results=max_res)
         if results:
-            return [f"- {res['title']}: {res['body'][:180]}" for res in results]
+            return [f"- {res['title']}: {res['body'][:200]}" for res in results]
     except Exception as e:
-        print(f"[FlightsAgent] DuckDuckGo search failed: {e}")
+        print(f"[FlightsAgent] DuckDuckGo search error: {e}")
 
     return []
 
 def search_flights(source: str, destination: str) -> str:
-    """Combines API route distance calculations and live web search for complete transit options."""
+    """Searches live web specifically for Flight options, Train options, and Road distances."""
     route_info = fetch_api_route_info(source, destination)
-    web_results = fetch_web_transit(source, destination)
+    
+    # 1. Flights Search
+    flight_query = f"flights from {source} to {destination} airline schedule price INR duration"
+    flight_results = search_query(flight_query, max_res=3)
+
+    # 2. Trains Search
+    train_query = f"trains from {source} to {destination} train name number departure arrival timing fare ticket price INR"
+    train_results = search_query(train_query, max_res=3)
 
     output_sections = []
 
-    if route_info:
+    if flight_results:
         output_sections.append(
-            f"### Route & Distance API Data ({source} to {destination}):\n" + route_info
+            f"### Available Flight Options ({source} to {destination}):\n" + "\n".join(flight_results)
         )
 
-    if web_results:
+    if train_results:
         output_sections.append(
-            f"### Live Transit & Ticket Search (Flights, Trains & Cabs in INR):\n" + "\n".join(web_results)
+            f"### Available Train Routes ({source} to {destination}):\n" + "\n".join(train_results)
+        )
+
+    if route_info:
+        output_sections.append(
+            f"### Road & Driving Route Details ({source} to {destination}):\n" + route_info
         )
 
     if output_sections:
         return "\n\n".join(output_sections)
 
-    return f"Transit from {source} to {destination}: Multiple direct flights, express trains, and highway routes operate daily."
+    return f"Transit from {source} to {destination}: Direct flights, express trains, and highway options available daily."
 
 groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
 
 flights_agent = LlmAgent(
     name="FlightsSpecialist",
     model=groq_model,
-    instruction="""You are a transit and flight specialist. You receive both API distance/route data and live web search data for flights, trains, and cabs.
-Your job is to provide realistic transit options between the origin and destination:
-1. Flights: Airline names (e.g. IndiGo, Air India, Akasa), typical flight duration, and estimated economy fares in INR (₹).
-2. Trains: Popular train options (e.g. Vande Bharat, Tejas, Rajdhani, Express), typical journey hours, and fare ranges in INR (₹).
-3. Road / Cabs: Expressway distance, estimated drive time, and typical one-way cab fares in INR (₹).
-
-STRICT RULES:
-- Never hallucinate non-existent travel connections.
-- Ensure all prices are explicitly stated in INR (₹).""",
-    description="Provides real flight schedules, train options, and road transit fares using API + Web Search.",
+    instruction="""You are a transit and flight specialist. Provide distinct options for Flights (airline, timings, price in ₹, duration), Trains (name/number, timings, price in ₹, duration), and Road/Cab distance.""",
+    description="Provides real flight schedules, train options, and road transit fares.",
     tools=[search_flights]
 )
 

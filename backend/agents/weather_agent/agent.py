@@ -90,15 +90,15 @@ def fetch_api_weather(city: str) -> str:
     return ""
 
 def fetch_web_climate_tips(city: str) -> list:
-    """Searches live web for current month climate trends and packing advice with compact snippets."""
-    query = f"current weather climate packing tips what to wear {city}"
+    """Searches live web for seasonal tourist travel advice and packing essentials."""
+    query = f"weather climate travel packing advice for tourists in {city} essentials"
     
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
             client = TavilyClient(api_key=tavily_key)
             response = client.search(query=query, search_depth="basic", max_results=2)
-            results = [f"- {res['title']}: {res['content'][:150]}" for res in response.get('results', [])]
+            results = [f"- {res['title']}: {res['content'][:160]}" for res in response.get('results', [])]
             if results:
                 return results
         except Exception as e:
@@ -107,14 +107,14 @@ def fetch_web_climate_tips(city: str) -> list:
     try:
         results = DDGS().text(query, max_results=2)
         if results:
-            return [f"- {res['title']}: {res['body'][:150]}" for res in results]
+            return [f"- {res['title']}: {res['body'][:160]}" for res in results]
     except Exception as e:
         print(f"[WeatherAgent] DuckDuckGo climate search error: {e}")
 
     return []
 
 def get_weather(city: str) -> str:
-    """Combines live Weather APIs (Open-Meteo / OWM) and web search for complete weather & packing advice."""
+    """Combines live Weather APIs and web search for weather and practical packing tips."""
     api_weather = fetch_api_weather(city)
     web_tips = fetch_web_climate_tips(city)
 
@@ -124,21 +124,20 @@ def get_weather(city: str) -> str:
         output_sections.append(f"### Live Meteorological Data ({city}):\n" + api_weather)
 
     if web_tips:
-        output_sections.append(f"### Climate Insights & Packing Tips ({city}):\n" + "\n".join(web_tips))
+        output_sections.append(f"### Climate Insights & Packing Advice ({city}):\n" + "\n".join(web_tips))
 
     if output_sections:
         return "\n\n".join(output_sections)
 
-    return f"Weather for {city}: Moderate temperatures around 28°C expected. Light breathable clothing recommended."
+    return f"Weather for {city}: Moderate temperatures around 28°C expected. Light cotton clothing, umbrella, and walking shoes recommended."
 
 groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
 
 weather_agent = LlmAgent(
     name="WeatherSpecialist",
     model=groq_model,
-    instruction="""You are a weather specialist. You receive both live meteorological API data (temperatures, humidity, wind) and web packing tips.
-Your job is to provide a concise summary with exact temperatures, weather condition, and practical clothing/packing recommendations for the destination.""",
-    description="Provides real-time weather forecasts and packing advice using API + Web Search.",
+    instruction="""You are a weather specialist. Provide live temperature, weather conditions, and practical travel packing advice (clothing, essentials).""",
+    description="Provides real-time weather forecasts and travel packing advice.",
     tools=[get_weather]
 )
 

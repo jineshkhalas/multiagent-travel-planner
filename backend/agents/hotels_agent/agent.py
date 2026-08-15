@@ -33,7 +33,7 @@ def fetch_api_hotels(city: str) -> list:
         places_url = (
             f"https://api.geoapify.com/v2/places?"
             f"categories=accommodation.hotel,accommodation.resort,accommodation.guest_house&"
-            f"filter=circle:{lon},{lat},25000&limit=5&apiKey={geo_key}"
+            f"filter=circle:{lon},{lat},25000&limit=6&apiKey={geo_key}"
         )
         places_res = requests.get(places_url, timeout=6).json()
 
@@ -50,15 +50,13 @@ def fetch_api_hotels(city: str) -> list:
         print(f"[HotelsAgent] Geoapify API hotel search error: {e}")
         return []
 
-def fetch_web_hotels(city: str) -> list:
-    """Searches live web for real hotel tariffs and room rates per night with compact snippets."""
-    query = f"top hotels resorts stay options in {city} room price per night INR rupees budget luxury"
-    
+def search_query(query: str, max_res: int = 3) -> list:
+    """Helper to query Tavily with DDGS fallback."""
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
             client = TavilyClient(api_key=tavily_key)
-            response = client.search(query=query, search_depth="basic", max_results=3)
+            response = client.search(query=query, search_depth="basic", max_results=max_res)
             results = [f"- {res['title']}: {res['content'][:180]}" for res in response.get('results', [])]
             if results:
                 return results
@@ -66,7 +64,7 @@ def fetch_web_hotels(city: str) -> list:
             print(f"[HotelsAgent] Tavily search error: {e}")
 
     try:
-        results = DDGS().text(query, max_results=3)
+        results = DDGS().text(query, max_results=max_res)
         if results:
             return [f"- {res['title']}: {res['body'][:180]}" for res in results]
     except Exception as e:
@@ -75,40 +73,59 @@ def fetch_web_hotels(city: str) -> list:
     return []
 
 def search_hotels(city: str) -> str:
-    """Combines structured Places API hotel properties and live web search for best hotel options."""
+    """Searches live web for luxury 5-star, 3-star comfort, and budget hotel options with nightly rates."""
     api_hotels = fetch_api_hotels(city)
-    web_hotels = fetch_web_hotels(city)
+    
+    # 1. Luxury / 5-Star / 7-Star Search
+    luxury_query = f"top 5 star luxury hotels resorts in {city} room price per night INR"
+    luxury_results = search_query(luxury_query, max_res=2)
+
+    # 2. 3-Star & 4-Star Comfort Search
+    mid_query = f"best 3 star 4 star boutique hotels in {city} price per night INR"
+    mid_results = search_query(mid_query, max_res=2)
+
+    # 3. Budget / Cheap Stays Search
+    budget_query = f"best budget cheap hotels homestays in {city} under 2000 INR price per night"
+    budget_results = search_query(budget_query, max_res=2)
 
     output_sections = []
 
     if api_hotels:
         output_sections.append(
-            f"### Verified Hotel Properties (Places API Data for {city}):\n" + "\n".join(api_hotels)
+            f"### Verified Hotel Properties in {city}:\n" + "\n".join(api_hotels)
         )
 
-    if web_hotels:
+    if luxury_results:
         output_sections.append(
-            f"### Live Web Search (Nightly Rates & Tariffs for {city}):\n" + "\n".join(web_hotels)
+            f"### Luxury 5-Star Stays ({city}):\n" + "\n".join(luxury_results)
+        )
+
+    if mid_results:
+        output_sections.append(
+            f"### 3-Star & 4-Star Stays ({city}):\n" + "\n".join(mid_results)
+        )
+
+    if budget_results:
+        output_sections.append(
+            f"### Budget & Cheap Stays ({city}):\n" + "\n".join(budget_results)
         )
 
     if output_sections:
         return "\n\n".join(output_sections)
 
-    return f"Search hotels in {city}: Look for top-rated budget, mid-range, and luxury options on local booking platforms."
+    return f"Search hotels in {city}: Luxury 5-star, 3-star comfort, and budget stays available."
 
 groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
 
 hotels_agent = LlmAgent(
     name="HotelsSpecialist",
     model=groq_model,
-    instruction="""You are a hotel booking specialist. You receive both verified hotel property records from Places API and live web pricing data.
-Your job is to recommend real, verified hotel and resort options categorized into budget, mid-range, and luxury with realistic nightly tariffs in INR (₹).
-
-STRICT RULES:
-1. ALWAYS extract real, named hotel properties from the provided data.
-2. NEVER output generic placeholder names like 'Hotel 1', 'Hotel A', or 'Option 1'.
-3. State prices explicitly in INR (₹) per night.""",
-    description="Provides verified hotel options and pricing using API + Web Search.",
+    instruction="""You are a hotel specialist. Provide real hotel recommendations grouped strictly into:
+1. Luxury / 5-Star / 7-Star Stays (Top 2)
+2. Premium / 3-Star & 4-Star Stays (Top 2)
+3. Budget / Cheap Stays (Top 2)
+Always specify real names, locations, and nightly tariffs in INR (₹).""",
+    description="Provides tiered hotel recommendations and nightly rates in INR.",
     tools=[search_hotels]
 )
 

@@ -15,7 +15,10 @@ import {
   MapPin, 
   Clock, 
   Sparkles,
-  Info
+  Info,
+  Train,
+  Star,
+  DollarSign
 } from 'lucide-react';
 
 function stripEmojis(str) {
@@ -84,21 +87,21 @@ export default function ItineraryDisplay({ content }) {
 
       if (/flight|transit|travel/i.test(text)) {
         icon = <Plane className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />;
-        badge = "Transit";
+        badge = "Transit Options";
       } else if (/weather|climate|forecast/i.test(text)) {
         icon = <CloudSun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-400" />;
         badge = "Live Weather";
       } else if (/hotel|accommodation|stay|resort/i.test(text)) {
         icon = <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />;
-        badge = "Hotels";
+        badge = "Accommodations";
       } else if (/itinerary|day|schedule/i.test(text)) {
         icon = <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />;
-        badge = "Itinerary";
+        badge = "Day-by-Day Plan";
       }
 
       return (
-        <div className="flex items-center justify-between flex-wrap gap-1.5 mt-3 sm:mt-4 mb-1.5 sm:mb-2 pb-1 border-b border-gray-100 dark:border-gray-800/80">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-gray-800 dark:text-gray-200 font-bold text-xs sm:text-sm min-w-0">
+        <div className="flex items-center justify-between flex-wrap gap-1.5 mt-4 sm:mt-5 mb-2 sm:mb-2.5 pb-1.5 border-b border-gray-200 dark:border-gray-700/80">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-gray-900 dark:text-gray-100 font-bold text-xs sm:text-sm min-w-0">
             <div className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
               {icon}
             </div>
@@ -109,6 +112,34 @@ export default function ItineraryDisplay({ content }) {
               {badge}
             </span>
           )}
+        </div>
+      );
+    },
+
+    h4: ({ children }) => {
+      const text = String(children);
+      let icon = <Navigation className="w-3 h-3 text-gray-500 dark:text-gray-400 shrink-0" />;
+
+      if (/flight/i.test(text)) {
+        icon = <Plane className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+      } else if (/train/i.test(text)) {
+        icon = <Train className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
+      } else if (/road|cab|drive/i.test(text)) {
+        icon = <Car className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+      } else if (/luxury|5-star|7-star/i.test(text)) {
+        icon = <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />;
+      } else if (/3-star|4-star|premium/i.test(text)) {
+        icon = <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+      } else if (/budget|cheap/i.test(text)) {
+        icon = <Ticket className="w-3.5 h-3.5 text-green-500 shrink-0" />;
+      } else if (/day\s*\d+/i.test(text)) {
+        icon = <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
+      }
+
+      return (
+        <div className="flex items-center gap-1.5 mt-3 sm:mt-3.5 mb-1.5 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-xs tracking-tight">
+          {icon}
+          <span>{text}</span>
         </div>
       );
     },
@@ -159,6 +190,33 @@ export default function ItineraryDisplay({ content }) {
         return (
           <span className="inline-flex items-center gap-1 font-bold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs mr-1.5 my-0.5 shadow-xs shrink-0">
             <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>{text}</span>
+          </span>
+        );
+      }
+
+      if (/^flight\s*\d+/i.test(text)) {
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-blue-800 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
+            <Plane className="w-2.5 h-2.5 text-blue-500" />
+            <span>{text}</span>
+          </span>
+        );
+      }
+
+      if (/^train\s*\d+/i.test(text)) {
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
+            <Train className="w-2.5 h-2.5 text-emerald-500" />
+            <span>{text}</span>
+          </span>
+        );
+      }
+
+      if (/^hotel\s*\d+/i.test(text)) {
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-purple-800 dark:text-purple-300 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
+            <Building2 className="w-2.5 h-2.5 text-purple-500" />
             <span>{text}</span>
           </span>
         );
