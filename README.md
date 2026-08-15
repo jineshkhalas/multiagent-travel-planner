@@ -1,4 +1,4 @@
-# 🌍 Multi-Agent AI Travel Planner (A2A Architecture)
+# Multi-Agent AI Travel Planner (A2A Architecture)
 
 An end-to-end full-stack AI travel planning platform built with a multi-agent system. Instead of relying on a single monolithic LLM prompt that hallucinates routes, hotel names, or prices, this project coordinates **Specialist AI Agents** using Google's **Agent Development Kit (ADK)** and the **Agent-to-Agent (A2A)** architecture.
 
@@ -6,14 +6,14 @@ To produce accurate, practical, and grounded itineraries, each agent combines **
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
-- 🧠 **Conversational Memory & Context Resolution**: Seamlessly modifies itineraries (e.g. *"Make it 5 days by adding Lonavala"* or *"Switch hotels to luxury resorts only"*) while preserving original trip details.
-- ⚡ **Parallel Multi-Agent Execution**: 4 specialist domains (Flights/Transit, Weather, Hotels, Attractions) execute in parallel for lightning-fast itinerary synthesis.
-- ✈️ **Real Flight & Train Data**: Distinct flight options (IndiGo, Air India, SpiceJet, Akasa) and IRCTC express trains with departure/arrival timings, journey durations, and realistic fares in INR (₹).
-- 🏨 **Tiered Hotel Recommendations**: Real, verified hotel properties categorized strictly into **Luxury / 5-Star / 7-Star**, **Premium / 3-Star & 4-Star**, and **Budget / Cheap Stays** with nightly tariffs in INR.
-- 📅 **Structured Day-by-Day Itinerary**: Every single day includes dedicated **Morning**, **Afternoon**, and **Evening** blocks with distances, local taxi costs, entry ticket fees, and food budgets.
-- 🎨 **Modern & Breathable UI**:
+- **Conversational Memory & Context Resolution**: Seamlessly modifies itineraries (e.g., *"Make it 5 days by adding Lonavala"* or *"Switch hotels to luxury resorts only"*) while preserving original trip details.
+- **Parallel Multi-Agent Execution**: 4 specialist domains (Flights & Transit, Weather, Hotels, Attractions) execute in parallel for fast itinerary synthesis.
+- **Real Flight & Train Data**: Distinct flight options (IndiGo, Air India, SpiceJet, Akasa) and IRCTC express trains with departure/arrival timings, journey durations, and realistic fares in INR (₹).
+- **Tiered Hotel Recommendations**: Real, verified hotel properties categorized strictly into **Luxury / 5-Star / 7-Star**, **Premium / 3-Star & 4-Star**, and **Budget / Cheap Stays** with nightly tariffs in INR.
+- **Structured Day-by-Day Itinerary**: Every single day includes dedicated **Morning**, **Afternoon**, and **Evening** blocks with distances, local taxi costs, entry ticket fees, and food budgets.
+- **Modern User Interface**:
   - Custom typography with **McLaren** for headers and **Plus Jakarta Sans** for body content with generous letter-spacing and word-spacing.
   - Interactive **Dashboard** with newest-first trip sorting (new plans appear right beside *"Plan New Trip"*).
   - Real-time **Dark / Light Mode** toggle.
@@ -22,27 +22,27 @@ To produce accurate, practical, and grounded itineraries, each agent combines **
 
 ---
 
-## 🏗️ Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
     subgraph Client ["1. Frontend & Client Layer"]
-        User(["👤 Traveler"]) <--> UI["🌐 React 19 UI (Vite + Tailwind CSS) / CLI"]
+        User(["Traveler"]) <--> UI["React 19 UI (Vite + Tailwind CSS) / CLI"]
     end
 
     subgraph Master ["2. Master Orchestrator (FastAPI)"]
-        UI <-->|POST /api/plan| API["⚡ FastAPI Server (Port 8000 / Cloud PORT)"]
-        API --> ContextAgent["🧠 Context & Memory Resolver\n(Resolves Source, Destinations, Days, History)"]
-        ContextAgent --> Dispatcher["📡 Parallel Domain Dispatcher"]
-        Aggregator["📥 Specialist Data Aggregator"] --> FormattingAgent["📝 Formatting & Synthesis Engine\n(Generates Structured Itinerary in ₹)"]
+        UI <-->|POST /api/plan| API["FastAPI Server (Port 8000 / Cloud PORT)"]
+        API --> ContextAgent["Context & Memory Resolver\n(Resolves Source, Destinations, Days, History)"]
+        ContextAgent --> Dispatcher["Parallel Domain Dispatcher"]
+        Aggregator["Specialist Data Aggregator"] --> FormattingAgent["Formatting & Synthesis Engine\n(Generates Structured Itinerary in INR)"]
         FormattingAgent --> API
     end
 
-    subgraph Specialists ["3. Specialist Data & Tool Microservices"]
-        Dispatcher -.-> W["🌤️ Weather Specialist\n(Geoapify + Open-Meteo + Packing Tips)"]
-        Dispatcher -.-> A["🏛️ Attractions Specialist\n(Geoapify Places API + Tavily Search)"]
-        Dispatcher -.-> F["✈️ Flights & Transit Specialist\n(Haversine Distance + Flights/IRCTC Fares)"]
-        Dispatcher -.-> H["🏨 Hotels Specialist\n(Accommodation API + Tiered Tariffs)"]
+    subgraph Specialists ["3. Specialist Data & Tool Services"]
+        Dispatcher -.-> W["Weather Specialist\n(Geoapify + Open-Meteo + Packing Tips)"]
+        Dispatcher -.-> A["Attractions Specialist\n(Geoapify Places API + Tavily Search)"]
+        Dispatcher -.-> F["Flights & Transit Specialist\n(Haversine Distance + Flights/IRCTC Fares)"]
+        Dispatcher -.-> H["Hotels Specialist\n(Accommodation API + Tiered Tariffs)"]
 
         W -.-> Aggregator
         A -.-> Aggregator
@@ -64,7 +64,7 @@ flowchart TD
 
 ---
 
-## 📋 Standardized Itinerary Output Format
+## Itinerary Output Format
 
 Every generated itinerary follows a uniform, readable Markdown structure:
 
@@ -114,12 +114,12 @@ Every generated itinerary follows a uniform, readable Markdown structure:
 - **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
 - **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
 
-... (Guaranteed for every requested day)
+... (Generated for each day)
 ```
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 Travel_Planner/
@@ -157,20 +157,20 @@ Travel_Planner/
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: Python 3.10+, FastAPI, Uvicorn, LiteLLM (`groq/llama-3.1-8b-instant`), Google ADK (`google-adk`), A2A Protocol (`a2a-sdk`).
 - **APIs & Data Providers**:
-  - **Geoapify API**: Accurate coordinates, tourist attraction places, and accommodation properties.
+  - **Geoapify API**: Coordinates, verified attractions, and hotel accommodation properties.
   - **Open-Meteo & OpenWeatherMap**: Real-time meteorological forecasting and climate metrics.
-  - **Tavily Search & DuckDuckGo**: Live web queries for real-time fares, train schedules, entry tickets, and room tariffs.
+  - **Tavily Search & DuckDuckGo**: Live web queries for fares, train schedules, tickets, and tariffs.
 - **Frontend**: React 19, Vite, Tailwind CSS, Lucide React icons, ReactMarkdown, jsPDF, html2canvas.
 - **Authentication & Database**: Firebase Auth (Google Sign-In) & Cloud Firestore.
 - **Hosting / Deployment**: Render.com (Backend Web Service) + Vercel (Frontend SPA).
 
 ---
 
-## 💻 Local Setup & Installation
+## Local Setup & Installation
 
 ### Prerequisites
 
@@ -252,9 +252,9 @@ python cli.py
 
 ---
 
-## 🚀 Deployment Guide (Render + Vercel)
+## Deployment Guide (Render + Vercel)
 
-Deploy this full-stack application for **100% Free** using **Render.com** (for the backend) and **Vercel** (for the frontend).
+Deploy this application using **Render.com** (for the backend) and **Vercel** (for the frontend).
 
 ### Part 1: Deploy Backend to Render.com
 
@@ -298,7 +298,7 @@ Deploy this full-stack application for **100% Free** using **Render.com** (for t
    - `VITE_FIREBASE_MESSAGING_SENDER_ID`: Your Firebase Messaging sender ID
    - `VITE_FIREBASE_APP_ID`: Your Firebase App ID
    - `VITE_FIREBASE_MEASUREMENT_ID`: Your Firebase Measurement ID
-5. Click **Deploy**. Vercel will build and launch your live application!
+5. Click **Deploy**. Vercel will build and launch your live application.
 
 ---
 
@@ -306,11 +306,11 @@ Deploy this full-stack application for **100% Free** using **Render.com** (for t
 
 1. Open the [Firebase Console](https://console.firebase.google.com/) and select your project.
 2. Go to **Authentication &rarr; Settings &rarr; Authorized Domains**.
-3. Click **Add domain** and paste your Vercel live domain (e.g. `multiagent-travel-planner.vercel.app`).
+3. Click **Add domain** and paste your Vercel live domain (e.g., `multiagent-travel-planner.vercel.app`).
 
 ---
 
-## 💬 Example Prompts
+## Example Prompts
 
 - **Initial trip request**:
   - *"Plan a 3 day trip to Mumbai from Ahmedabad for 2 people with a moderate budget."*
