@@ -37,8 +37,8 @@ export default function ItineraryDisplay({ content }) {
     h1: ({ children }) => {
       const text = String(children);
       return (
-        <div className="flex items-center flex-wrap gap-2 mt-4 sm:mt-5 mb-2.5 sm:mb-3 pb-1.5 sm:pb-2 border-b border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 font-bold text-base sm:text-lg">
-          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+        <div className="flex items-center flex-wrap gap-2.5 mt-5 sm:mt-6 mb-3 sm:mb-4 pb-2 border-b border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 font-bold text-base sm:text-lg">
+          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
           <span className="break-words">{text}</span>
         </div>
       );
@@ -46,33 +46,33 @@ export default function ItineraryDisplay({ content }) {
 
     h2: ({ children }) => {
       const text = String(children);
-      let icon = <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />;
+      let icon = <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
       let badge = null;
 
       if (/flight|transit|travel/i.test(text)) {
-        icon = <Plane className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />;
+        icon = <Plane className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
         badge = "Transit Details";
       } else if (/weather|climate|forecast/i.test(text)) {
-        icon = <CloudSun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-400" />;
+        icon = <CloudSun className="w-4 h-4 text-amber-500 dark:text-amber-400" />;
         badge = "Live Forecast";
       } else if (/hotel|accommodation|stay|resort/i.test(text)) {
-        icon = <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />;
+        icon = <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
         badge = "Stays & Tariffs";
       } else if (/itinerary|day|schedule/i.test(text)) {
-        icon = <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />;
+        icon = <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
         badge = "Day-by-Day";
       }
 
       return (
-        <div className="flex items-center justify-between flex-wrap gap-1.5 mt-4 sm:mt-5 mb-2 sm:mb-2.5 pt-2 sm:pt-3 pb-1 border-b border-gray-100 dark:border-gray-800/80">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-gray-900 dark:text-gray-100 font-bold text-xs sm:text-sm tracking-tight min-w-0">
-            <div className="p-1 sm:p-1.5 rounded-lg bg-gray-100/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 shrink-0">
+        <div className="flex items-center justify-between flex-wrap gap-2 mt-6 mb-3 pt-3 pb-1.5 border-b border-gray-200/80 dark:border-gray-800">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-bold text-sm sm:text-base tracking-tight min-w-0">
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 shrink-0 shadow-xs">
               {icon}
             </div>
             <span className="break-words">{text}</span>
           </div>
           {badge && (
-            <span className="text-[9px] sm:text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+            <span className="text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
               {badge}
             </span>
           )}
@@ -82,33 +82,33 @@ export default function ItineraryDisplay({ content }) {
 
     h3: ({ children }) => {
       const text = String(children);
-      let icon = <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />;
+      let icon = <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
       let badge = null;
 
       if (/flight|transit|travel/i.test(text)) {
-        icon = <Plane className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />;
+        icon = <Plane className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
         badge = "Transit Options";
       } else if (/weather|climate|forecast/i.test(text)) {
-        icon = <CloudSun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-400" />;
+        icon = <CloudSun className="w-4 h-4 text-amber-500 dark:text-amber-400" />;
         badge = "Live Weather";
       } else if (/hotel|accommodation|stay|resort/i.test(text)) {
-        icon = <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />;
+        icon = <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
         badge = "Accommodations";
       } else if (/itinerary|day|schedule/i.test(text)) {
-        icon = <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />;
+        icon = <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
         badge = "Day-by-Day Plan";
       }
 
       return (
-        <div className="flex items-center justify-between flex-wrap gap-1.5 mt-4 sm:mt-5 mb-2 sm:mb-2.5 pb-1.5 border-b border-gray-200 dark:border-gray-700/80">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-gray-900 dark:text-gray-100 font-bold text-xs sm:text-sm min-w-0">
-            <div className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
+        <div className="flex items-center justify-between flex-wrap gap-2 mt-5 sm:mt-6 mb-3 pb-2 border-b border-gray-200/90 dark:border-gray-800">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-bold text-sm sm:text-base min-w-0">
+            <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
               {icon}
             </div>
             <span className="break-words">{text}</span>
           </div>
           {badge && (
-            <span className="text-[9px] sm:text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
+            <span className="text-[10px] sm:text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full shrink-0">
               {badge}
             </span>
           )}
@@ -118,7 +118,7 @@ export default function ItineraryDisplay({ content }) {
 
     h4: ({ children }) => {
       const text = String(children);
-      let icon = <Navigation className="w-3 h-3 text-gray-500 dark:text-gray-400 shrink-0" />;
+      let icon = <Navigation className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" />;
 
       if (/flight/i.test(text)) {
         icon = <Plane className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
@@ -137,7 +137,7 @@ export default function ItineraryDisplay({ content }) {
       }
 
       return (
-        <div className="flex items-center gap-1.5 mt-3 sm:mt-3.5 mb-1.5 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-xs tracking-tight">
+        <div className="flex items-center gap-2 mt-4 mb-2 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm tracking-wide">
           {icon}
           <span>{text}</span>
         </div>
@@ -145,13 +145,13 @@ export default function ItineraryDisplay({ content }) {
     },
 
     p: ({ children }) => (
-      <div className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm leading-relaxed mb-2 break-words">
+      <div className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm leading-relaxed mb-3 break-words font-normal">
         {children}
       </div>
     ),
 
     li: ({ children }) => (
-      <li className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm mb-1.5 leading-relaxed pl-1 break-words">
+      <li className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm mb-2 leading-relaxed pl-1 break-words font-normal">
         {children}
       </li>
     ),
@@ -161,8 +161,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^morning$/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-bold text-amber-800 dark:text-amber-300 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-xs mr-1 my-0.5 shadow-xs shrink-0">
-            <Sunrise className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md text-[11px] sm:text-xs mr-1.5 my-1 shadow-xs shrink-0">
+            <Sunrise className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Morning</span>
           </span>
         );
@@ -170,8 +170,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^afternoon$/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-bold text-yellow-800 dark:text-yellow-300 bg-yellow-50/90 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800/60 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-xs mr-1 my-0.5 shadow-xs shrink-0">
-            <Sun className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+          <span className="inline-flex items-center gap-1.5 font-bold text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800/60 px-2 py-0.5 rounded-md text-[11px] sm:text-xs mr-1.5 my-1 shadow-xs shrink-0">
+            <Sun className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
             <span>Afternoon</span>
           </span>
         );
@@ -179,8 +179,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^evening$/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-bold text-indigo-800 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-xs mr-1 my-0.5 shadow-xs shrink-0">
-            <Sunset className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span className="inline-flex items-center gap-1.5 font-bold text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 px-2 py-0.5 rounded-md text-[11px] sm:text-xs mr-1.5 my-1 shadow-xs shrink-0">
+            <Sunset className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span>Evening</span>
           </span>
         );
@@ -188,8 +188,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^day\s*\d+/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-bold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs mr-1.5 my-0.5 shadow-xs shrink-0">
-            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="inline-flex items-center gap-1.5 font-bold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg text-xs mr-2 my-1 shadow-xs shrink-0">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
             <span>{text}</span>
           </span>
         );
@@ -197,8 +197,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^flight\s*\d+/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-semibold text-blue-800 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
-            <Plane className="w-2.5 h-2.5 text-blue-500" />
+          <span className="inline-flex items-center gap-1 font-semibold text-blue-800 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
+            <Plane className="w-3 h-3 text-blue-500" />
             <span>{text}</span>
           </span>
         );
@@ -206,8 +206,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^train\s*\d+/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
-            <Train className="w-2.5 h-2.5 text-emerald-500" />
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
+            <Train className="w-3 h-3 text-emerald-500" />
             <span>{text}</span>
           </span>
         );
@@ -215,8 +215,8 @@ export default function ItineraryDisplay({ content }) {
 
       if (/^hotel\s*\d+/i.test(text)) {
         return (
-          <span className="inline-flex items-center gap-1 font-semibold text-purple-800 dark:text-purple-300 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 px-1.5 py-0.5 rounded text-[10px] sm:text-xs mr-1">
-            <Building2 className="w-2.5 h-2.5 text-purple-500" />
+          <span className="inline-flex items-center gap-1 font-semibold text-purple-800 dark:text-purple-300 bg-purple-50/90 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
+            <Building2 className="w-3 h-3 text-purple-500" />
             <span>{text}</span>
           </span>
         );
@@ -226,63 +226,63 @@ export default function ItineraryDisplay({ content }) {
     },
 
     ul: ({ children }) => (
-      <ul className="space-y-1 sm:space-y-1.5 my-2 pl-3 sm:pl-4 list-disc marker:text-blue-500 dark:marker:text-blue-400 text-xs sm:text-sm">
+      <ul className="space-y-2 my-2.5 pl-4 sm:pl-5 list-disc marker:text-blue-500 dark:marker:text-blue-400 text-xs sm:text-sm">
         {children}
       </ul>
     ),
 
     ol: ({ children }) => (
-      <ol className="space-y-1 sm:space-y-1.5 my-2 pl-3 sm:pl-4 list-decimal marker:font-semibold marker:text-blue-600 dark:marker:text-blue-400 text-xs sm:text-sm">
+      <ol className="space-y-2 my-2.5 pl-4 sm:pl-5 list-decimal marker:font-semibold marker:text-blue-600 dark:marker:text-blue-400 text-xs sm:text-sm">
         {children}
       </ol>
     ),
 
     blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-950/30 p-2 sm:p-3 my-2 rounded-r-lg text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 italic flex gap-1.5 sm:gap-2 items-start">
-        <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
+      <blockquote className="border-l-4 border-blue-500 dark:border-blue-400 bg-blue-50/60 dark:bg-blue-950/40 p-2.5 sm:p-3.5 my-3 rounded-r-lg text-xs sm:text-sm text-gray-700 dark:text-gray-300 italic flex gap-2 items-start leading-relaxed">
+        <Info className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
         <div className="break-words min-w-0">{children}</div>
       </blockquote>
     ),
 
     code: ({ children }) => (
-      <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-[10px] sm:text-xs font-mono break-all">
+      <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs font-mono break-all">
         {children}
       </code>
     ),
 
     pre: ({ children }) => (
-      <pre className="p-2 sm:p-3 my-2 rounded-xl bg-gray-900 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-100 overflow-x-auto text-[10px] sm:text-xs font-mono max-w-full">
+      <pre className="p-3 my-3 rounded-xl bg-gray-900 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-100 overflow-x-auto text-xs font-mono max-w-full leading-normal">
         {children}
       </pre>
     ),
 
     table: ({ children }) => (
-      <div className="overflow-x-auto my-2 sm:my-3 max-w-full">
-        <table className="w-full border-collapse text-[10px] sm:text-xs border border-gray-200 dark:border-gray-700">
+      <div className="overflow-x-auto my-3 max-w-full">
+        <table className="w-full border-collapse text-xs border border-gray-200 dark:border-gray-700">
           {children}
         </table>
       </div>
     ),
 
     th: ({ children }) => (
-      <th className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1.5 sm:p-2 text-left font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+      <th className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2 text-left font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
         {children}
       </th>
     ),
 
     td: ({ children }) => (
-      <td className="border border-gray-200 dark:border-gray-700 p-1.5 sm:p-2 text-gray-700 dark:text-gray-300">
+      <td className="border border-gray-200 dark:border-gray-700 p-2 text-gray-700 dark:text-gray-300">
         {children}
       </td>
     ),
 
     hr: () => (
-      <hr className="border-t border-gray-200 dark:border-gray-800 my-3 sm:my-4" />
+      <hr className="border-t border-gray-200 dark:border-gray-800 my-4" />
     )
   };
 
   return (
-    <div className="w-full max-w-full overflow-hidden">
+    <div className="w-full max-w-full overflow-hidden font-sans">
       <ReactMarkdown components={MarkdownComponents}>
         {cleanContent}
       </ReactMarkdown>
