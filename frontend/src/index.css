@@ -3,18 +3,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Quicksand', 'McLaren', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mclaren: 'McLaren', 'Quicksand', cursive, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'McLaren', 'Quicksand', cursive, sans-serif;
+  --font-display: 'McLaren', cursive;
 }
 
 body {
-  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   letter-spacing: 0.015em;
-  line-height: 1.65;
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
-  letter-spacing: 0.01em;
+  font-family: 'McLaren', 'Quicksand', cursive, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+p, li, span, input, textarea, button {
+  letter-spacing: 0.012em;
 }
