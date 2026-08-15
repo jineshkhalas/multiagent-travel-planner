@@ -47,11 +47,13 @@ MANDATORY STRUCTURAL RULES:
    - Section 2: ### Weather Conditions (ALWAYS include this section!)
    - Section 3: ### Recommended Accommodations
    - Section 4: ### Detailed Day-by-Day Itinerary
-3. REAL NAMES IN BOLD:
-   - For Hotels: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
-   - For Flights: Put the Airline name in bold (e.g. `- **IndiGo**: Dep: 09:00 - Arr: 10:38 | Price: ₹4,680 | Duration: 1h 38m`).
-   - For Trains: Put the Train name & number in bold (e.g. `- **19031 - YOGA EXPRESS**: Dep: 11:55 - Arr: 05:19 | Price: ₹540 | Duration: 17h 24m`).
-   - For Road: Use distinct bullets for Car/Cab and Bus/Transit.
+3. REALISTIC PRICING SANITY CHECK (CRITICAL):
+   - FLIGHTS: Domestic one-way economy flights in India cost between ₹2,500 and ₹9,500 per passenger.
+     * NEVER output numbers like ₹16,00,000, raw IDs, phone numbers, or timestamps as prices!
+     * If a raw web snippet contains a corrupted number, provide the realistic market economy fare for that route (e.g. ₹3,200 to ₹5,500).
+     * List distinct airlines (e.g. IndiGo, Air India, SpiceJet, Akasa Air) with realistic departure times and durations.
+   - TRAINS: Standard Indian Railways fares range between ₹350 and ₹2,500.
+   - HOTELS: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
 4. MULTI-DAY ITINERARY STRUCTURE:
    - Generate EXACTLY the requested number of days.
    - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
@@ -70,9 +72,9 @@ STRICT OUTPUT TEMPLATE:
 ### Flights & Transit Options
 
 #### Flights
-- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
 
 #### Trains
 - **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
@@ -269,8 +271,8 @@ RAW RETRIEVED SUB-AGENT DATA:
 USER REQUEST:
 {request}
 
-REMINDER: You MUST include ALL 4 SECTIONS:
-1. ### Flights & Transit Options (Flights, Trains, Road & Local Transit with Car/Cab & Bus)
+REMINDER: You MUST include ALL 4 SECTIONS with realistic prices in INR:
+1. ### Flights & Transit Options (Realistic flight fares ₹2,500-₹8,500 per seat with distinct airlines, realistic trains ₹350-₹2,500, road transit with Car/Cab & Bus)
 2. ### Weather Conditions (Live Weather & Packing Tips)
 3. ### Recommended Accommodations (Real Hotel Names in bold under Luxury, Premium, Budget)
 4. ### Detailed Day-by-Day Itinerary (Morning, Afternoon, Evening for every single day)

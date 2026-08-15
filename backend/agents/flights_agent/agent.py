@@ -95,12 +95,12 @@ def search_flights(source: str, destination: str) -> str:
     """Searches live web specifically for Flight options, Train options, and Road distances."""
     route_info = fetch_api_route_info(source, destination)
     
-    # 1. Flights Search
-    flight_query = f"flights from {source} to {destination} airline schedule price INR duration"
+    # 1. Flights Search with multiple airlines
+    flight_query = f"flights from {source} to {destination} Indigo Air India SpiceJet ticket fare price INR"
     flight_results = search_query(flight_query, max_res=3)
 
     # 2. Trains Search
-    train_query = f"trains from {source} to {destination} train name number departure arrival timing fare ticket price INR"
+    train_query = f"trains from {source} to {destination} IRCTC train name departure arrival timing fare INR"
     train_results = search_query(train_query, max_res=3)
 
     output_sections = []
@@ -130,7 +130,7 @@ groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
 flights_agent = LlmAgent(
     name="FlightsSpecialist",
     model=groq_model,
-    instruction="""You are a transit and flight specialist. Provide distinct options for Flights (airline, timings, price in ₹, duration), Trains (name/number, timings, price in ₹, duration), and Road/Cab distance.""",
+    instruction="""You are a transit and flight specialist. Provide realistic options for Flights (different airlines, realistic domestic fares typically ₹2,500 - ₹8,500), Trains (name/number, timings, fare ₹350 - ₹2,500), and Road/Cab distance.""",
     description="Provides real flight schedules, train options, and road transit fares.",
     tools=[search_flights]
 )
