@@ -3,13 +3,13 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyC923p-FmBtAe6frNm4ck-7kcAIlvP4ZIU",
-    authDomain: "travel-planner-a2a.firebaseapp.com",
-    projectId: "travel-planner-a2a",
-    storageBucket: "travel-planner-a2a.firebasestorage.app",
-    messagingSenderId: "385921077462",
-    appId: "1:385921077462:web:d3852dc9703b2bc75f7977",
-    measurementId: "G-9W4PL0N98Y"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
