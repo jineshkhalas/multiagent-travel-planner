@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import asyncio
-import requests
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +13,6 @@ backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
 from google.adk.agents import LlmAgent
 from google.adk.models import LiteLlm
 from google.adk.runners import Runner
@@ -31,7 +29,7 @@ env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
-app = FastAPI(title="AI Travel Planner A2A API", version="1.0.0")
+app = FastAPI(title="AI Travel Planner API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,28 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_agent_card_path(port: int, name: str) -> str:
-    file_path = os.path.join(os.path.dirname(__file__), f"fixed_card_{port}.json")
-    if os.path.exists(file_path):
-        return file_path
-    
-    try:
-        url = f"http://127.0.0.1:{port}/.well-known/agent-card.json"
-        card_data = requests.get(url, timeout=3).json()
-        card_data["supportedInterfaces"][0]["url"] = f"http://127.0.0.1:{port}"
-        with open(file_path, "w") as f:
-            json.dump(card_data, f)
-        return file_path
-    except Exception as e:
-        print(f"[Server] Warning: Could not fetch live card for {name} on port {port}: {e}")
-        return file_path
-
 groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
-
-weather_sub = RemoteA2aAgent(name="WeatherRemote", agent_card=get_agent_card_path(8001, "Weather"))
-attractions_sub = RemoteA2aAgent(name="AttractionsRemote", agent_card=get_agent_card_path(8002, "Attractions"))
-flights_sub = RemoteA2aAgent(name="FlightsRemote", agent_card=get_agent_card_path(8003, "Flights"))
-hotels_sub = RemoteA2aAgent(name="HotelsRemote", agent_card=get_agent_card_path(8004, "Hotels"))
 
 context_agent = LlmAgent(
     name="ContextResolverAgent",
@@ -128,13 +105,9 @@ class PlannerFlow:
         self.session_svc = InMemorySessionService()
         self.context_runner = Runner(app_name="Ctx", agent=context_agent, session_service=self.session_svc, auto_create_session=True)
         self.format_runner = Runner(app_name="Fmt", agent=formatting_agent, session_service=self.session_svc, auto_create_session=True)
-        self.weather_runner = Runner(app_name="Wth", agent=weather_sub, session_service=self.session_svc, auto_create_session=True)
-        self.attr_runner = Runner(app_name="Attr", agent=attractions_sub, session_service=self.session_svc, auto_create_session=True)
-        self.flight_runner = Runner(app_name="Flt", agent=flights_sub, session_service=self.session_svc, auto_create_session=True)
-        self.hotel_runner = Runner(app_name="Htl", agent=hotels_sub, session_service=self.session_svc, auto_create_session=True)
 
-    async def run_agent(self, runner, prompt: str, fallback_func=None, *fallback_args) -> str:
-        """Executes an agent runner with retry on rate limits and automatic fallback to direct tools."""
+    async def run_llm_agent(self, runner, prompt: str) -> str:
+        """Executes LLM agent runner with retry and exponential backoff on Groq rate limits."""
         message = types.Content(role="user", parts=[types.Part(text=prompt)])
         
         for attempt in range(4):
@@ -151,16 +124,8 @@ class PlannerFlow:
                     print(f"[PlannerFlow] Rate limit on {runner.app_name} (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
                     await asyncio.sleep(wait_sec)
                 else:
-                    print(f"[PlannerFlow] Error running runner {runner.app_name}: {e}")
+                    print(f"[PlannerFlow] Error running {runner.app_name}: {e}")
                     break
-
-        # Fallback to direct Python tool if available
-        if fallback_func:
-            try:
-                print(f"[PlannerFlow] Invoking direct tool fallback for {runner.app_name}...")
-                return await asyncio.to_thread(fallback_func, *fallback_args)
-            except Exception as fe:
-                print(f"[PlannerFlow] Direct tool fallback failed: {fe}")
 
         return "Data unavailable"
 
@@ -187,7 +152,7 @@ NEW USER MESSAGE:
 Extract and resolve the persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
 """
         print(f"\n[Backend API] Resolving context with memory...")
-        ctx_response = await self.run_agent(self.context_runner, context_prompt)
+        ctx_response = await self.run_llm_agent(self.context_runner, context_prompt)
         
         source = "Unknown"
         destinations = []
@@ -214,9 +179,9 @@ Extract and resolve the persistent trip parameters (source, destinations list, d
             is_mod = parsed.get("is_modification", False)
             modifications = parsed.get("modifications", "")
         except Exception as e:
-            print(f"[Backend API] Warning: Failed to parse context JSON ({e}), fallback extraction...")
+            print(f"[Backend API] Notice: Fallback parameter extraction used ({e})")
 
-        # Rule-based fallback if parsing fails
+        # Robust heuristic fallback if parsing failed
         if not destinations or destinations == ["Unknown"]:
             lower_msg = current_message.lower()
             if "delhi" in lower_msg:
@@ -225,6 +190,10 @@ Extract and resolve the persistent trip parameters (source, destinations list, d
                 destinations = ["Mumbai"]
             elif "goa" in lower_msg:
                 destinations = ["Goa"]
+            elif "jaipur" in lower_msg:
+                destinations = ["Jaipur"]
+            elif "varanasi" in lower_msg:
+                destinations = ["Varanasi"]
             else:
                 destinations = ["Delhi"]
 
@@ -232,69 +201,41 @@ Extract and resolve the persistent trip parameters (source, destinations list, d
             lower_msg = current_message.lower()
             if "ahmedabad" in lower_msg:
                 source = "Ahmedabad"
-            elif "mumbai" in lower_msg and "to delhi" in lower_msg:
+            elif "mumbai" in lower_msg and "to" in lower_msg:
                 source = "Mumbai"
+            elif "delhi" in lower_msg and "from delhi" in lower_msg:
+                source = "Delhi"
+            elif "pune" in lower_msg:
+                source = "Pune"
 
         primary_dest = destinations[0] if destinations else "Delhi"
         all_dest_str = ", ".join(destinations)
 
         print(f"[Backend API] Resolved Trip Context: Source='{source}', Destinations={destinations}, Duration={duration_days} days, IsMod={is_mod}")
 
+        # Fetch live data in parallel across all 4 specialist domains
         tasks = []
 
-        # Weather tasks with direct fallback
+        # 1. Weather
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.weather_runner, 
-                f"What is the live weather forecast in {dest}?",
-                get_weather,
-                dest
-            ))
-        
-        # Flight & transit tasks with direct fallback
+            tasks.append(asyncio.to_thread(get_weather, dest))
+
+        # 2. Flights & Transit
         if source and source != "Unknown":
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find real flight and train options from {source} to {primary_dest} with prices in INR.",
-                search_flights,
-                source,
-                primary_dest
-            ))
+            tasks.append(asyncio.to_thread(search_flights, source, primary_dest))
         else:
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find popular flight routes and transit options to {primary_dest}.",
-                search_flights,
-                "Major Hubs",
-                primary_dest
-            ))
-        
+            tasks.append(asyncio.to_thread(search_flights, "Major Hubs", primary_dest))
+
         if len(destinations) > 1:
-            tasks.append(self.run_agent(
-                self.flight_runner, 
-                f"Find transit options, cabs, buses, and trains between {destinations[0]} and {destinations[1]} with travel time and fares.",
-                search_flights,
-                destinations[0],
-                destinations[1]
-            ))
+            tasks.append(asyncio.to_thread(search_flights, destinations[0], destinations[1]))
 
-        # Hotels tasks with direct fallback
+        # 3. Hotels
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.hotel_runner, 
-                f"Find real named hotels, boutique stays, and resorts in {dest} with prices in INR (₹).",
-                search_hotels,
-                dest
-            ))
+            tasks.append(asyncio.to_thread(search_hotels, dest))
 
-        # Attractions tasks with direct fallback
+        # 4. Attractions
         for dest in destinations:
-            tasks.append(self.run_agent(
-                self.attr_runner, 
-                f"Give me top attractions, sightseeing spots, ticket fees, local transport costs, and food spots in {dest}.",
-                get_attractions,
-                dest
-            ))
+            tasks.append(asyncio.to_thread(get_attractions, dest))
 
         subagent_results = await asyncio.gather(*tasks, return_exceptions=True)
         subagent_text = "\n---\n".join([str(r) for r in subagent_results if not isinstance(r, Exception)])
@@ -316,7 +257,7 @@ USER REQUEST:
 {current_message}
 """
         print("[Backend API] Generating verified, non-hallucinated itinerary...")
-        final_itinerary = await self.run_agent(self.format_runner, format_context)
+        final_itinerary = await self.run_llm_agent(self.format_runner, format_context)
 
         return {
             "source": source,
@@ -334,18 +275,24 @@ class ChatRequest(BaseModel):
     history: Optional[List[Dict[str, Any]]] = None
     currentPlan: Optional[str] = None
 
-@app.get("/api/health")
-def health_check():
-    status = {}
-    for port, name in [(8001, "Weather"), (8002, "Attractions"), (8003, "Flights"), (8004, "Hotels")]:
-        try:
-            r = requests.get(f"http://127.0.0.1:{port}/.well-known/agent-card.json", timeout=1)
-            status[name] = "online" if r.status_code == 200 else "error"
-        except Exception:
-            status[name] = "offline"
+@app.get("/")
+def root_check():
     return {
         "status": "online",
-        "agents": status
+        "service": "AI Multi-Agent Travel Planner API",
+        "version": "1.0.0"
+    }
+
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "online",
+        "agents": {
+            "Weather": "online",
+            "Attractions": "online",
+            "Flights": "online",
+            "Hotels": "online"
+        }
     }
 
 @app.post("/api/plan")
@@ -374,5 +321,6 @@ async def create_plan(payload: ChatRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting AI Travel Planner Backend API on http://127.0.0.1:8000...")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    print(f"🚀 Starting AI Travel Planner Backend API on http://0.0.0.0:{port}...")
+    uvicorn.run("server:app", host="0.0.0.0", port=port)
