@@ -2,6 +2,9 @@ import asyncio
 import json
 import os
 import sys
+import warnings
+warnings.filterwarnings("ignore")
+
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 import litellm

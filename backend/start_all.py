@@ -1,11 +1,14 @@
 import os
 import sys
-import uvicorn
+import warnings
+warnings.filterwarnings("ignore")
 
 # Ensure backend dir is in sys.path
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
+
+import uvicorn
 
 def main():
     port = int(os.getenv("PORT", 8000))

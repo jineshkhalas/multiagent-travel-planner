@@ -2,6 +2,9 @@ import os
 import sys
 import json
 import asyncio
+import warnings
+warnings.filterwarnings("ignore")
+
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

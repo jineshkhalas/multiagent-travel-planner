@@ -1,6 +1,9 @@
 import os
 import math
 import requests
+import warnings
+warnings.filterwarnings("ignore")
+
 from dotenv import load_dotenv
 from duckduckgo_search import DDGS
 from tavily import TavilyClient
