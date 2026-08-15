@@ -136,6 +136,22 @@ export default function App() {
         id: doc.id,
         ...doc.data()
       }));
+
+      // Sort newest first so the most recent plan is on the left beside 'Plan New Trip'
+      tripsData.sort((a, b) => {
+        const getTimestamp = (t) => {
+          if (!t) return 0;
+          if (t.updatedAt?.toMillis) return t.updatedAt.toMillis();
+          if (t.updatedAt?.seconds) return t.updatedAt.seconds * 1000;
+          if (t.createdAt?.toMillis) return t.createdAt.toMillis();
+          if (t.createdAt?.seconds) return t.createdAt.seconds * 1000;
+          if (typeof t.updatedAt === 'string') return new Date(t.updatedAt).getTime();
+          if (typeof t.createdAt === 'string') return new Date(t.createdAt).getTime();
+          return 0;
+        };
+        return getTimestamp(b) - getTimestamp(a);
+      });
+
       setTrips(tripsData);
     } catch (error) {
       console.error("Error fetching trips:", error);
@@ -193,7 +209,8 @@ export default function App() {
         chatHistory: [],
         savedPlans: [],
         savedPlan: "",
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       setActiveTripId(docRef.id);
       setActiveTripTitle("New Trip Plan");
