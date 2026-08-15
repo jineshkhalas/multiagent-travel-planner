@@ -62,80 +62,81 @@ context_agent = LlmAgent(
 formatting_agent = LlmAgent(
     name="FormattingAgent",
     model=groq_model,
-    instruction="""You are a master travel planner. Your job is to format and compile the specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
+    instruction="""You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
 
-    CRITICAL RULES:
+    MANDATORY STRUCTURAL RULES:
     1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
     - ABSOLUTELY NEVER add random distant cities unless explicitly requested!
-    2. MULTI-DAY ITINERARY STRUCTURE:
-    - Generate EXACTLY the requested number of days.
-    - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
-      - **Morning**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
-      - **Afternoon**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
-      - **Evening**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Dinner / Leisure: ₹]
-      NEVER skip Afternoon or Evening on any day!
-    3. FLIGHTS & TRAINS STRUCTURE:
-    - Under "#### Flights", list up to 3 distinct flight options formatted as:
-      - **Flight 1**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-      - **Flight 2**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-      - **Flight 3**: [Airline Name] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - Under "#### Trains", list up to 3 distinct train options formatted as:
-      - **Train 1**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-      - **Train 2**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-      - **Train 3**: [Train Name & Number] | Departure: [Time] & Arrival: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - Under "#### Road & Local Transit", provide estimated road distance, drive time, and cab fare in ₹.
-    4. HOTEL TIERS (EXACTLY 2 HOTELS PER CATEGORY):
-    - Under "#### Luxury / 5-Star / 7-Star Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
-    - Under "#### Premium / 3-Star & 4-Star Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
-    - Under "#### Budget & Cheap Stays (Top 2)": List 2 real hotels with nightly tariff in ₹.
-    5. WEATHER & PACKING:
-    - Bullet points with Temperature, Condition, Humidity, Wind, and practical packing advice (clothing/essentials).
-    6. ALL PRICES IN INR (₹):
-    - Never use $ symbols. All costs must be in INR (₹).
-    7. NO RAW EMOJIS:
-    - Do NOT output raw emoji characters (like ✈️, 🌤️, 🏨, 🗺️, 🌅, 🌇, 🚕). Use clean markdown headers so the frontend UI can render vector icons automatically.
+    2. ALL 4 MAIN SECTIONS ARE STRICTLY MANDATORY (NEVER SKIP ANY SECTION):
+       - Section 1: ### Flights & Transit Options
+       - Section 2: ### Weather Conditions (ALWAYS include this section!)
+       - Section 3: ### Recommended Accommodations
+       - Section 4: ### Detailed Day-by-Day Itinerary
+    3. REAL NAMES IN BOLD:
+       - For Hotels: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
+       - For Flights: Put the Airline name in bold (e.g. `- **IndiGo**: Dep: 09:00 - Arr: 10:38 | Price: ₹4,680 | Duration: 1h 38m`).
+       - For Trains: Put the Train name & number in bold (e.g. `- **19031 - YOGA EXPRESS**: Dep: 11:55 - Arr: 05:19 | Price: ₹540 | Duration: 17h 24m`).
+       - For Road: Use distinct bullets for Car/Cab and Bus/Transit.
+    4. MULTI-DAY ITINERARY STRUCTURE:
+       - Generate EXACTLY the requested number of days.
+       - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
+         - **Morning**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
+         - **Afternoon**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
+         - **Evening**: [Activity 1] (Taxi: ₹X | Entry: ₹X) • Dinner at local restaurant (₹X)
+         NEVER skip Afternoon or Evening on any day!
+    5. ALL PRICES IN INR (₹):
+       - Never use $ symbols. All costs must be in INR (₹).
+    6. CLEAN HEADERS:
+       - Do NOT wrap markdown headers in bold (use `### Flights & Transit Options`, NOT `### **Flights & Transit Options**`).
+       - Do NOT output raw emoji characters in headers or text.
 
     STRICT OUTPUT TEMPLATE:
 
     ### Flights & Transit Options
+
     #### Flights
-    - **Flight 1**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **Flight 2**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **Flight 3**: [Airline] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
 
     #### Trains
-    - **Train 1**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **Train 2**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **Train 3**: [Train Name & Number] | Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Train Name & Number 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+    - **[Train Name & Number 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
 
     #### Road & Local Transit
-    - Road Distance: ~[X] km | Estimated Drive Time: ~[Y] hours | Typical Cab Fare: ₹[Amount]
+    - **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
+    - **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
+    - **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
 
     ### Weather Conditions
+
     #### Live Weather & Packing Tips
     - **Temperature & Condition**: [Current Temp]°C, [Condition]
     - **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
-    - **Packing Advice**: [Practical clothing & travel essentials advice]
+    - **Packing Advice**: [Practical clothing and travel essentials advice]
 
     ### Recommended Accommodations
-    #### Luxury / 5-Star / 7-Star Stays (Top 2)
-    - **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
-    - **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+
+    #### Luxury / 5-Star Stays (Top 2)
+    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
     #### Premium / 3-Star & 4-Star Stays (Top 2)
-    - **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
-    - **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
     #### Budget & Cheap Stays (Top 2)
-    - **Hotel 1**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
-    - **Hotel 2**: [Hotel Name] | [Key Highlight/Location] | Approx. ₹[Tariff] / night
+    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
     ### Detailed Day-by-Day Itinerary
+
     For each Day (Day 1 to the final Day):
     #### Day X: [City/Region Theme]
-    - **Morning**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
-    - **Afternoon**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Activity 2]
-    - **Evening**: [Activity 1] (Distance | Transport: ₹ | Entry: ₹ | Food: ₹) • [Dinner / Leisure: ₹]
+    - **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+    - **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+    - **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
     """
 )
 
@@ -296,6 +297,12 @@ RAW RETRIEVED SUB-AGENT DATA:
 
 USER REQUEST:
 {current_message}
+
+REMINDER: You MUST include ALL 4 SECTIONS:
+1. ### Flights & Transit Options (Flights, Trains, Road & Local Transit with Car/Cab & Bus)
+2. ### Weather Conditions (Live Weather & Packing Tips)
+3. ### Recommended Accommodations (Real Hotel Names in bold under Luxury, Premium, Budget)
+4. ### Detailed Day-by-Day Itinerary (Morning, Afternoon, Evening for every single day)
 """
         print("[Backend API] Generating verified, non-hallucinated itinerary with strict structure...")
         final_itinerary = await self.run_llm_agent(self.format_runner, format_context)

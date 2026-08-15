@@ -17,6 +17,7 @@ import {
   Sparkles,
   Info,
   Train,
+  Bus,
   Star,
   DollarSign
 } from 'lucide-react';
@@ -28,6 +29,16 @@ function stripEmojis(str) {
     .trim();
 }
 
+function extractText(node) {
+  if (node === null || node === undefined) return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join('');
+  if (React.isValidElement(node) && node.props && node.props.children) {
+    return extractText(node.props.children);
+  }
+  return '';
+}
+
 export default function ItineraryDisplay({ content }) {
   if (!content) return null;
 
@@ -35,17 +46,17 @@ export default function ItineraryDisplay({ content }) {
 
   const MarkdownComponents = {
     h1: ({ children }) => {
-      const text = String(children);
+      const text = extractText(children);
       return (
         <div className="flex items-center flex-wrap gap-2.5 mt-5 sm:mt-6 mb-3 sm:mb-4 pb-2 border-b border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 font-bold text-base sm:text-lg">
           <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span className="break-words">{text}</span>
+          <span className="break-words">{children}</span>
         </div>
       );
     },
 
     h2: ({ children }) => {
-      const text = String(children);
+      const text = extractText(children);
       let icon = <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
       let badge = null;
 
@@ -69,7 +80,7 @@ export default function ItineraryDisplay({ content }) {
             <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 shrink-0 shadow-xs">
               {icon}
             </div>
-            <span className="break-words">{text}</span>
+            <span className="break-words">{children}</span>
           </div>
           {badge && (
             <span className="text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
@@ -81,7 +92,7 @@ export default function ItineraryDisplay({ content }) {
     },
 
     h3: ({ children }) => {
-      const text = String(children);
+      const text = extractText(children);
       let icon = <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
       let badge = null;
 
@@ -105,7 +116,7 @@ export default function ItineraryDisplay({ content }) {
             <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
               {icon}
             </div>
-            <span className="break-words">{text}</span>
+            <span className="break-words">{children}</span>
           </div>
           {badge && (
             <span className="text-[10px] sm:text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full shrink-0">
@@ -117,14 +128,14 @@ export default function ItineraryDisplay({ content }) {
     },
 
     h4: ({ children }) => {
-      const text = String(children);
+      const text = extractText(children);
       let icon = <Navigation className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" />;
 
       if (/flight/i.test(text)) {
         icon = <Plane className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
       } else if (/train/i.test(text)) {
         icon = <Train className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
-      } else if (/road|cab|drive/i.test(text)) {
+      } else if (/road|cab|drive|transit|bus/i.test(text)) {
         icon = <Car className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
       } else if (/luxury|5-star|7-star/i.test(text)) {
         icon = <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />;
@@ -134,12 +145,14 @@ export default function ItineraryDisplay({ content }) {
         icon = <Ticket className="w-3.5 h-3.5 text-green-500 shrink-0" />;
       } else if (/day\s*\d+/i.test(text)) {
         icon = <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
+      } else if (/weather|climate/i.test(text)) {
+        icon = <CloudSun className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
       }
 
       return (
         <div className="flex items-center gap-2 mt-4 mb-2 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm tracking-wide">
           {icon}
-          <span>{text}</span>
+          <span>{children}</span>
         </div>
       );
     },
@@ -157,7 +170,7 @@ export default function ItineraryDisplay({ content }) {
     ),
 
     strong: ({ children }) => {
-      const text = String(children).trim();
+      const text = extractText(children).trim();
 
       if (/^morning$/i.test(text)) {
         return (
@@ -195,28 +208,19 @@ export default function ItineraryDisplay({ content }) {
         );
       }
 
-      if (/^flight\s*\d+/i.test(text)) {
+      if (/^(cab|taxi|car|rental car)/i.test(text)) {
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-amber-800 dark:text-amber-300 bg-amber-50/90 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
+            <Car className="w-3 h-3 text-amber-500" />
+            <span>{text}</span>
+          </span>
+        );
+      }
+
+      if (/^(bus|state transport|volvo)/i.test(text)) {
         return (
           <span className="inline-flex items-center gap-1 font-semibold text-blue-800 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
-            <Plane className="w-3 h-3 text-blue-500" />
-            <span>{text}</span>
-          </span>
-        );
-      }
-
-      if (/^train\s*\d+/i.test(text)) {
-        return (
-          <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
-            <Train className="w-3 h-3 text-emerald-500" />
-            <span>{text}</span>
-          </span>
-        );
-      }
-
-      if (/^hotel\s*\d+/i.test(text)) {
-        return (
-          <span className="inline-flex items-center gap-1 font-semibold text-purple-800 dark:text-purple-300 bg-purple-50/90 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/60 px-1.5 py-0.5 rounded text-[11px] sm:text-xs mr-1">
-            <Building2 className="w-3 h-3 text-purple-500" />
+            <Bus className="w-3 h-3 text-blue-500" />
             <span>{text}</span>
           </span>
         );
