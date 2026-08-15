@@ -7,17 +7,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import litellm
 
 # Ensure backend dir is in sys.path
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
-
-from google.adk.agents import LlmAgent
-from google.adk.models import LiteLlm
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
 
 from agents.weather_agent.agent import get_weather
 from agents.attractions_agent.agent import get_attractions
@@ -29,6 +24,9 @@ env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
+# Suppress litellm debug logs
+litellm.suppress_debug_info = True
+
 app = FastAPI(title="AI Travel Planner API", version="1.0.0")
 
 app.add_middleware(
@@ -39,136 +37,124 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
+CONTEXT_SYSTEM_PROMPT = """You are a Conversation Memory and Trip Context Resolver.
+Your job is to examine the conversation history, existing itinerary (if any), and the latest user message to extract accurate, persistent trip parameters.
 
-context_agent = LlmAgent(
-    name="ContextResolverAgent",
-    model=groq_model,
-    instruction="""You are a Conversation Memory and Trip Context Resolver.
-    Your job is to examine the entire conversation history, existing itinerary (if any), and the latest user message to extract accurate, persistent trip parameters.
+RULES:
+1. PRESERVE MEMORY: If the user previously mentioned origin (like Ahmedabad) and destination (like Mumbai), and now says "plan it for 5 days by adding lonavala", the source is STILL Ahmedabad, the destinations are ["Mumbai", "Lonavala"], and duration is 5 days.
+2. EXTRACT ACCURATELY:
+   - "source": Starting city/airport.
+   - "destinations": Array of all intended destination cities/places in logical travel order (e.g. ["Mumbai", "Lonavala"]).
+   - "duration_days": Total number of days for the trip (e.g. 5). If unspecified, default to 3.
+   - "is_modification": Boolean indicating if this is modifying/extending a previous plan.
+   - "modifications": Summary of what changed.
+3. OUTPUT FORMAT: Return strictly a valid JSON object. Do not wrap with markdown code blocks.
+"""
 
-    RULES:
-    1. PRESERVE MEMORY: If the user previously mentioned origin (like Ahmedabad) and destination (like Mumbai), and now says "plan it for 5 days by adding lonavala", the source is STILL Ahmedabad, the destinations are ["Mumbai", "Lonavala"], and duration is 5 days.
-    2. EXTRACT ACCURATELY:
-    - "source": Starting city/airport.
-    - "destinations": Array of all intended destination cities/places in logical travel order (e.g. ["Mumbai", "Lonavala"]).
-    - "duration_days": Total number of days for the trip (e.g. 5). If unspecified, default to 3.
-    - "is_modification": Boolean indicating if this is modifying/extending a previous plan.
-    - "modifications": Summary of what changed.
-    3. OUTPUT FORMAT: Return strictly a valid JSON object. Do not wrap with markdown code blocks.
-    """
-)
+FORMATTING_SYSTEM_PROMPT = """You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
 
-formatting_agent = LlmAgent(
-    name="FormattingAgent",
-    model=groq_model,
-    instruction="""You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
+MANDATORY STRUCTURAL RULES:
+1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
+   - ABSOLUTELY NEVER add random distant cities unless explicitly requested!
+2. ALL 4 MAIN SECTIONS ARE STRICTLY MANDATORY (NEVER SKIP ANY SECTION):
+   - Section 1: ### Flights & Transit Options
+   - Section 2: ### Weather Conditions (ALWAYS include this section!)
+   - Section 3: ### Recommended Accommodations
+   - Section 4: ### Detailed Day-by-Day Itinerary
+3. REAL NAMES IN BOLD:
+   - For Hotels: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
+   - For Flights: Put the Airline name in bold (e.g. `- **IndiGo**: Dep: 09:00 - Arr: 10:38 | Price: ₹4,680 | Duration: 1h 38m`).
+   - For Trains: Put the Train name & number in bold (e.g. `- **19031 - YOGA EXPRESS**: Dep: 11:55 - Arr: 05:19 | Price: ₹540 | Duration: 17h 24m`).
+   - For Road: Use distinct bullets for Car/Cab and Bus/Transit.
+4. MULTI-DAY ITINERARY STRUCTURE:
+   - Generate EXACTLY the requested number of days.
+   - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
+     - **Morning**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
+     - **Afternoon**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
+     - **Evening**: [Activity 1] (Taxi: ₹X | Entry: ₹X) • Dinner at local restaurant (₹X)
+     NEVER skip Afternoon or Evening on any day!
+5. ALL PRICES IN INR (₹):
+   - Never use $ symbols. All costs must be in INR (₹).
+6. CLEAN HEADERS:
+   - Do NOT wrap markdown headers in bold (use `### Flights & Transit Options`, NOT `### **Flights & Transit Options**`).
+   - Do NOT output raw emoji characters in headers or text.
 
-    MANDATORY STRUCTURAL RULES:
-    1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
-    - ABSOLUTELY NEVER add random distant cities unless explicitly requested!
-    2. ALL 4 MAIN SECTIONS ARE STRICTLY MANDATORY (NEVER SKIP ANY SECTION):
-       - Section 1: ### Flights & Transit Options
-       - Section 2: ### Weather Conditions (ALWAYS include this section!)
-       - Section 3: ### Recommended Accommodations
-       - Section 4: ### Detailed Day-by-Day Itinerary
-    3. REAL NAMES IN BOLD:
-       - For Hotels: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
-       - For Flights: Put the Airline name in bold (e.g. `- **IndiGo**: Dep: 09:00 - Arr: 10:38 | Price: ₹4,680 | Duration: 1h 38m`).
-       - For Trains: Put the Train name & number in bold (e.g. `- **19031 - YOGA EXPRESS**: Dep: 11:55 - Arr: 05:19 | Price: ₹540 | Duration: 17h 24m`).
-       - For Road: Use distinct bullets for Car/Cab and Bus/Transit.
-    4. MULTI-DAY ITINERARY STRUCTURE:
-       - Generate EXACTLY the requested number of days.
-       - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
-         - **Morning**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
-         - **Afternoon**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
-         - **Evening**: [Activity 1] (Taxi: ₹X | Entry: ₹X) • Dinner at local restaurant (₹X)
-         NEVER skip Afternoon or Evening on any day!
-    5. ALL PRICES IN INR (₹):
-       - Never use $ symbols. All costs must be in INR (₹).
-    6. CLEAN HEADERS:
-       - Do NOT wrap markdown headers in bold (use `### Flights & Transit Options`, NOT `### **Flights & Transit Options**`).
-       - Do NOT output raw emoji characters in headers or text.
+STRICT OUTPUT TEMPLATE:
 
-    STRICT OUTPUT TEMPLATE:
+### Flights & Transit Options
 
-    ### Flights & Transit Options
+#### Flights
+- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
 
-    #### Flights
-    - **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+#### Trains
+- **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Train Name & Number 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Train Name & Number 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
 
-    #### Trains
-    - **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **[Train Name & Number 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-    - **[Train Name & Number 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+#### Road & Local Transit
+- **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
+- **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
+- **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
 
-    #### Road & Local Transit
-    - **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
-    - **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
-    - **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
+### Weather Conditions
 
-    ### Weather Conditions
+#### Live Weather & Packing Tips
+- **Temperature & Condition**: [Current Temp]°C, [Condition]
+- **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
+- **Packing Advice**: [Practical clothing and travel essentials advice]
 
-    #### Live Weather & Packing Tips
-    - **Temperature & Condition**: [Current Temp]°C, [Condition]
-    - **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
-    - **Packing Advice**: [Practical clothing and travel essentials advice]
+### Recommended Accommodations
 
-    ### Recommended Accommodations
+#### Luxury / 5-Star Stays (Top 2)
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
-    #### Luxury / 5-Star Stays (Top 2)
-    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
-    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+#### Premium / 3-Star & 4-Star Stays (Top 2)
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
-    #### Premium / 3-Star & 4-Star Stays (Top 2)
-    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
-    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+#### Budget & Cheap Stays (Top 2)
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
-    #### Budget & Cheap Stays (Top 2)
-    - **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
-    - **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+### Detailed Day-by-Day Itinerary
 
-    ### Detailed Day-by-Day Itinerary
+For each Day (Day 1 to the final Day):
+#### Day X: [City/Region Theme]
+- **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
+"""
 
-    For each Day (Day 1 to the final Day):
-    #### Day X: [City/Region Theme]
-    - **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
-    - **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
-    - **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
-    """
-)
+async def call_llm(system_prompt: str, user_prompt: str) -> str:
+    """Direct LiteLLM call with automatic backoff on rate limits."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    for attempt in range(4):
+        try:
+            resp = await litellm.acompletion(
+                model="groq/llama-3.1-8b-instant",
+                messages=messages,
+                temperature=0.3
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
+                wait_sec = 2.5 * (attempt + 1)
+                print(f"[Backend API] Rate limit hit (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
+                await asyncio.sleep(wait_sec)
+            else:
+                print(f"[Backend API] LLM call error: {e}")
+                break
+
+    return ""
 
 class PlannerFlow:
-    def __init__(self):
-        self.session_svc = InMemorySessionService()
-        self.context_runner = Runner(app_name="Ctx", agent=context_agent, session_service=self.session_svc, auto_create_session=True)
-        self.format_runner = Runner(app_name="Fmt", agent=formatting_agent, session_service=self.session_svc, auto_create_session=True)
-
-    async def run_llm_agent(self, runner, prompt: str) -> str:
-        """Executes LLM agent runner with retry and exponential backoff on Groq rate limits."""
-        message = types.Content(role="user", parts=[types.Part(text=prompt)])
-        
-        for attempt in range(4):
-            try:
-                async for event in runner.run_async(user_id="web", session_id=f"sess_{os.urandom(4).hex()}", new_message=message):
-                    if hasattr(event, 'is_final_response') and event.is_final_response():
-                        if event.content and event.content.parts:
-                            return event.content.parts[0].text
-                break
-            except Exception as e:
-                err_str = str(e).lower()
-                if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
-                    wait_sec = 2.5 * (attempt + 1)
-                    print(f"[PlannerFlow] Rate limit on {runner.app_name} (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
-                    await asyncio.sleep(wait_sec)
-                else:
-                    print(f"[PlannerFlow] Error running {runner.app_name}: {e}")
-                    break
-
-        return "Data unavailable"
-
     async def run(self, current_message: str, history: List[Dict[str, Any]] = None, current_plan: str = ""):
         history_formatted = ""
         if history:
@@ -189,10 +175,10 @@ CURRENT SAVED ITINERARY SUMMARY:
 NEW USER MESSAGE:
 {current_message}
 
-Extract and resolve the persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
+Extract and resolve persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
 """
         print(f"\n[Backend API] Resolving context with memory...")
-        ctx_response = await self.run_llm_agent(self.context_runner, context_prompt)
+        ctx_response = await call_llm(CONTEXT_SYSTEM_PROMPT, context_prompt)
         
         source = "Unknown"
         destinations = []
@@ -305,7 +291,7 @@ REMINDER: You MUST include ALL 4 SECTIONS:
 4. ### Detailed Day-by-Day Itinerary (Morning, Afternoon, Evening for every single day)
 """
         print("[Backend API] Generating verified, non-hallucinated itinerary with strict structure...")
-        final_itinerary = await self.run_llm_agent(self.format_runner, format_context)
+        final_itinerary = await call_llm(FORMATTING_SYSTEM_PROMPT, format_context)
 
         return {
             "source": source,

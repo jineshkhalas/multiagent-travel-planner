@@ -4,17 +4,12 @@ import os
 import sys
 from typing import List, Dict, Any
 from dotenv import load_dotenv
+import litellm
 
 # Ensure backend dir is in sys.path
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
-
-from google.adk.agents import LlmAgent
-from google.adk.models import LiteLlm
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
 
 from agents.weather_agent.agent import get_weather
 from agents.attractions_agent.agent import get_attractions
@@ -26,13 +21,10 @@ env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
-groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
+litellm.suppress_debug_info = True
 
-context_agent = LlmAgent(
-    name="ContextResolverAgent",
-    model=groq_model,
-    instruction="""You are a Conversation Memory and Trip Context Resolver.
-Your job is to examine the entire conversation history, existing itinerary (if any), and the latest user message to extract accurate, persistent trip parameters.
+CONTEXT_SYSTEM_PROMPT = """You are a Conversation Memory and Trip Context Resolver.
+Your job is to examine the conversation history, existing itinerary (if any), and the latest user message to extract accurate, persistent trip parameters.
 
 RULES:
 1. PRESERVE MEMORY: If the user previously mentioned origin (like Ahmedabad) and destination (like Mumbai), and now says "plan it for 5 days by adding lonavala", the source is STILL Ahmedabad, the destinations are ["Mumbai", "Lonavala"], and duration is 5 days.
@@ -44,12 +36,8 @@ RULES:
    - "modifications": Summary of what changed.
 3. OUTPUT FORMAT: Return strictly a valid JSON object. Do not wrap with markdown code blocks.
 """
-)
 
-formatting_agent = LlmAgent(
-    name="FormattingAgent",
-    model=groq_model,
-    instruction="""You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
+FORMATTING_SYSTEM_PROMPT = """You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, and realistic travel itinerary.
 
 MANDATORY STRUCTURAL RULES:
 1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
@@ -125,37 +113,34 @@ For each Day (Day 1 to the final Day):
 - **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
 - **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
 """
-)
+
+async def call_llm(system_prompt: str, user_prompt: str) -> str:
+    """Direct LiteLLM call with automatic backoff on rate limits."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    for attempt in range(4):
+        try:
+            resp = await litellm.acompletion(
+                model="groq/llama-3.1-8b-instant",
+                messages=messages,
+                temperature=0.3
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
+                wait_sec = 2.5 * (attempt + 1)
+                print(f"[*] Rate limit hit (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
+                await asyncio.sleep(wait_sec)
+            else:
+                print(f"[*] LLM error: {e}")
+                break
+
+    return ""
 
 class PlannerFlow:
-    def __init__(self):
-        self.session_svc = InMemorySessionService()
-        self.context_runner = Runner(app_name="Ctx", agent=context_agent, session_service=self.session_svc, auto_create_session=True)
-        self.format_runner = Runner(app_name="Fmt", agent=formatting_agent, session_service=self.session_svc, auto_create_session=True)
-
-    async def run_llm_agent(self, runner, prompt: str) -> str:
-        """Runs agent runner with retry on rate limits."""
-        message = types.Content(role="user", parts=[types.Part(text=prompt)])
-        
-        for attempt in range(4):
-            try:
-                async for event in runner.run_async(user_id="cli", session_id=f"sess_{os.urandom(4).hex()}", new_message=message):
-                    if hasattr(event, 'is_final_response') and event.is_final_response():
-                        if event.content and event.content.parts:
-                            return event.content.parts[0].text
-                break
-            except Exception as e:
-                err_str = str(e).lower()
-                if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
-                    wait_sec = 2.5 * (attempt + 1)
-                    print(f"[*] Rate limit on {runner.app_name} (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
-                    await asyncio.sleep(wait_sec)
-                else:
-                    print(f"[*] Error running {runner.app_name}: {e}")
-                    break
-
-        return "Data unavailable"
-
     async def run(self, request: str, history: List[Dict[str, str]] = None, current_plan: str = ""):
         history_formatted = ""
         if history:
@@ -179,7 +164,7 @@ NEW USER MESSAGE:
 Extract and resolve persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
 """
         print("[System] Resolving trip context with conversation memory...")
-        ctx_response = await self.run_llm_agent(self.context_runner, context_prompt)
+        ctx_response = await call_llm(CONTEXT_SYSTEM_PROMPT, context_prompt)
         
         source = "Unknown"
         destinations = []
@@ -291,7 +276,7 @@ REMINDER: You MUST include ALL 4 SECTIONS:
 4. ### Detailed Day-by-Day Itinerary (Morning, Afternoon, Evening for every single day)
 """
         print("[*] Synthesizing verified, anti-hallucinated itinerary with strict structure...")
-        final_itinerary = await self.run_llm_agent(self.format_runner, format_context)
+        final_itinerary = await call_llm(FORMATTING_SYSTEM_PROMPT, format_context)
 
         return {
             "source": source,
