@@ -11,19 +11,16 @@ from google.adk.agents import LlmAgent
 from google.adk.models import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
-# Robustly load backend/.env
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
 def fetch_api_places(destination: str) -> list:
-    """Queries Geoapify Places API for verified attractions and landmarks."""
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if not geo_key or geo_key == "your_geoapify_key_here":
         return []
 
     try:
-        # Step 1: Geocode destination with smart variant resolution
         lon, lat = None, None
         queries = [destination]
         if "hills" in destination.lower():
@@ -48,7 +45,6 @@ def fetch_api_places(destination: str) -> list:
                 pass
 
         if lon is None:
-            # Fallback to global search
             geo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&apiKey={geo_key}"
             geo_res = requests.get(geo_url, timeout=5).json()
             if geo_res.get("features"):
@@ -57,7 +53,6 @@ def fetch_api_places(destination: str) -> list:
         if lon is None:
             return []
 
-        # Step 2: Fetch tourism and attraction places near coordinates (tight 10km radius to prevent distant places)
         places_url = (
             f"https://api.geoapify.com/v2/places?"
             f"categories=tourism.sights,tourism.attraction,entertainment.culture,leisure.park,heritage,religion.place_of_worship,natural&"
@@ -79,7 +74,6 @@ def fetch_api_places(destination: str) -> list:
         return []
 
 def fetch_web_attractions(destination: str) -> list:
-    """Searches live web for ticket prices, timings, and travel costs with compact snippets."""
     query = f"famous tourist places to visit in {destination} sights attractions temples caves trek viewpoints Gujarat tourism"
     
     tavily_key = os.getenv("TAVILY_API_KEY")
@@ -103,7 +97,6 @@ def fetch_web_attractions(destination: str) -> list:
     return []
 
 def get_attractions(destination: str) -> str:
-    """Combines structured Places API data and live web search for best-in-class attraction recommendations."""
     api_places = fetch_api_places(destination)
     web_results = fetch_web_attractions(destination)
 
@@ -124,7 +117,7 @@ def get_attractions(destination: str) -> str:
 
     return f"Attractions data for {destination}: Search for top local sightseeing spots, cultural sites, and adventure activities."
 
-groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
+groq_model = LiteLlm(model="groq/openai/gpt-oss-20b")
 
 attractions_agent = LlmAgent(
     name="AttractionsSpecialist",

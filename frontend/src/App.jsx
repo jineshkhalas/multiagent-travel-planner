@@ -137,7 +137,6 @@ export default function App() {
         ...doc.data()
       }));
 
-      // Sort newest first so the most recent plan is on the left beside 'Plan New Trip'
       tripsData.sort((a, b) => {
         const getTimestamp = (t) => {
           if (!t) return 0;

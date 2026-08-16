@@ -11,7 +11,6 @@ from google.adk.agents import LlmAgent
 from google.adk.models import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
-# Robustly load backend/.env
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv(env_path)
 load_dotenv()
@@ -25,10 +24,8 @@ WMO_CODES = {
 }
 
 def geocode_city(city: str):
-    """Geocodes city using Geoapify with Open-Meteo fallback."""
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if geo_key and geo_key != "your_geoapify_key_here":
-        # 1. Try type=city in India first
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&type=city&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):
@@ -38,7 +35,6 @@ def geocode_city(city: str):
         except Exception:
             pass
 
-        # 2. Try smart query variants
         queries = [city]
         if "hills" in city.lower():
             queries.append(city.replace("Hills", "Hill").replace("hills", "hill"))
@@ -55,7 +51,6 @@ def geocode_city(city: str):
             except Exception as e:
                 print(f"[WeatherAgent] Geoapify geocode error: {e}")
 
-        # 3. Global fallback if not found in India
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):
@@ -79,7 +74,6 @@ def geocode_city(city: str):
     return None, None, None
 
 def fetch_api_weather(city: str) -> str:
-    """Fetches live real-time weather using Open-Meteo with OpenWeatherMap fallback."""
     lat, lon, country = geocode_city(city)
     if lat is not None and lon is not None:
         try:
@@ -121,7 +115,6 @@ def fetch_api_weather(city: str) -> str:
     return ""
 
 def fetch_web_climate_tips(city: str) -> list:
-    """Searches live web for seasonal tourist travel advice and packing essentials."""
     query = f"weather climate travel packing advice for tourists in {city} essentials"
     
     tavily_key = os.getenv("TAVILY_API_KEY")
@@ -145,7 +138,6 @@ def fetch_web_climate_tips(city: str) -> list:
     return []
 
 def get_weather(city: str) -> str:
-    """Combines live Weather APIs and web search for weather and practical packing tips."""
     api_weather = fetch_api_weather(city)
     web_tips = fetch_web_climate_tips(city)
 
@@ -162,7 +154,7 @@ def get_weather(city: str) -> str:
 
     return f"Weather for {city}: Moderate temperatures around 28°C expected. Light cotton clothing, umbrella, and walking shoes recommended."
 
-groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
+groq_model = LiteLlm(model="groq/openai/gpt-oss-20b")
 
 weather_agent = LlmAgent(
     name="WeatherSpecialist",

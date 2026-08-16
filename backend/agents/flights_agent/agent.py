@@ -12,13 +12,11 @@ from google.adk.agents import LlmAgent
 from google.adk.models import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
-# Robustly load backend/.env
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv(env_path)
 load_dotenv()
 
 def calculate_distance_km(lat1, lon1, lat2, lon2):
-    """Haversine formula to compute great-circle distance in kilometers."""
     radius = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -27,10 +25,8 @@ def calculate_distance_km(lat1, lon1, lat2, lon2):
     return round(radius * c)
 
 def geocode_city(city: str):
-    """Geocodes city using Geoapify with Open-Meteo fallback."""
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if geo_key and geo_key != "your_geoapify_key_here":
-        # 1. Try type=city in India first
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&type=city&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):
@@ -39,7 +35,6 @@ def geocode_city(city: str):
         except Exception:
             pass
 
-        # 2. Try smart query variants
         queries = [city]
         if "hills" in city.lower():
             queries.append(city.replace("Hills", "Hill").replace("hills", "hill"))
@@ -55,7 +50,6 @@ def geocode_city(city: str):
             except Exception as e:
                 print(f"[FlightsAgent] Geoapify geocode error: {e}")
 
-        # 3. Global fallback if not found in India
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):
@@ -77,7 +71,6 @@ def geocode_city(city: str):
     return None, None
 
 def fetch_api_route_info(source: str, destination: str):
-    """Uses geocoding and distance calculations to get accurate road and air distances."""
     try:
         s_lat, s_lon = geocode_city(source)
         d_lat, d_lon = geocode_city(destination)
@@ -100,7 +93,6 @@ def fetch_api_route_info(source: str, destination: str):
     return "", None
 
 def search_query(query: str, max_res: int = 3) -> list:
-    """Helper to query Tavily with DDGS fallback."""
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
@@ -122,7 +114,6 @@ def search_query(query: str, max_res: int = 3) -> list:
     return []
 
 def search_flights(source: str, destination: str) -> str:
-    """Searches live web specifically for Flight options, Train options, and Road distances."""
     route_info, drive_km = fetch_api_route_info(source, destination)
     output_sections = []
 
@@ -130,7 +121,6 @@ def search_flights(source: str, destination: str) -> str:
     non_airport_spots = ["taranga", "dakor", "matheran", "saputara", "lonavala", "khandala", "mount abu", "panchgani", "mahabaleshwar"]
     is_non_airport = any(spot in dest_lower for spot in non_airport_spots)
 
-    # 1. Flights Search (Provide flights whenever destination has airport/nearby hub)
     if is_non_airport:
         flight_results = [
             f"- No commercial airport in {destination}. Direct road drive (car/cab), bus, or local train is recommended."
@@ -143,7 +133,6 @@ def search_flights(source: str, destination: str) -> str:
         flight_query = f"flights from {source} to {destination} Indigo Air India SpiceJet ticket fare price INR"
         flight_results = search_query(flight_query, max_res=3)
 
-    # 2. Trains Search
     train_query = f"trains from {source} to {destination} IRCTC train name departure arrival timing fare INR"
     train_results = search_query(train_query, max_res=3)
 
@@ -167,7 +156,7 @@ def search_flights(source: str, destination: str) -> str:
 
     return f"Transit from {source} to {destination}: Direct flights, express trains, and highway options available daily."
 
-groq_model = LiteLlm(model="groq/llama-3.1-8b-instant")
+groq_model = LiteLlm(model="groq/openai/gpt-oss-20b")
 
 flights_agent = LlmAgent(
     name="FlightsSpecialist",

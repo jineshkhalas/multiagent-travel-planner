@@ -9,7 +9,6 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 import litellm
 
-# Ensure backend dir is in sys.path
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
@@ -19,7 +18,6 @@ from agents.attractions_agent.agent import get_attractions
 from agents.flights_agent.agent import search_flights
 from agents.hotels_agent.agent import search_hotels
 
-# Load .env
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(env_path)
 load_dotenv()
@@ -74,7 +72,6 @@ MANDATORY STRUCTURAL RULES:
 """
 
 async def call_llm(system_prompt: str, user_prompt: str) -> str:
-    """Direct LiteLLM call with automatic multi-model fallback and backoff on rate limits."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
@@ -192,7 +189,6 @@ Return JSON only.
                 if duration_days <= added:
                     duration_days = duration_days + added
 
-        # Extract source and destination accurately from regex patterns like "to X from Y" or "from Y to X"
         to_match = re.search(r'to\s+([a-zA-Z\s]+?)(?:\s+from|\s+in|\s+for|$)', request, re.IGNORECASE)
         from_match = re.search(r'from\s+([a-zA-Z\s]+?)(?:\s+to|\s+in|\s+for|$)', request, re.IGNORECASE)
 
@@ -218,7 +214,6 @@ Return JSON only.
                 if not destinations or destinations == ["Unknown"] or not is_mod:
                     destinations = [extracted_dest]
 
-        # Safety: Purge source city completely from destinations list
         if source and source != "Unknown":
             destinations = [d for d in destinations if d and isinstance(d, str) and d.lower() != source_lower]
 
@@ -247,11 +242,9 @@ Return JSON only.
 
         tasks = []
 
-        # 1. Weather
         for dest in destinations:
             tasks.append(asyncio.to_thread(get_weather, dest))
 
-        # 2. Flights & Transit
         if source and source != "Unknown":
             tasks.append(asyncio.to_thread(search_flights, source, primary_dest))
         else:
@@ -261,12 +254,10 @@ Return JSON only.
             for i in range(len(destinations) - 1):
                 tasks.append(asyncio.to_thread(search_flights, destinations[i], destinations[i+1]))
 
-        # 3. Hotels (Only fetch for multi-day trips)
         if duration_days > 1:
             for dest in destinations:
                 tasks.append(asyncio.to_thread(search_hotels, dest))
 
-        # 4. Attractions
         for dest in destinations:
             tasks.append(asyncio.to_thread(get_attractions, dest))
 
@@ -411,7 +402,7 @@ async def main():
     current_plan = ""
 
     print("==================================================")
-    print("🌍 AI Travel Planner (A2A Architecture CLI)")
+    print("AI Travel Planner (A2A Architecture CLI)")
     print("Type your trip request (e.g. 'Plan a 3 day trip to Mumbai from Ahmedabad')")
     print("Type 'exit' to quit.")
     print("==================================================\n")
@@ -433,7 +424,7 @@ async def main():
             history.append({"role": "assistant", "content": itinerary[:300] + "..."})
 
             print("\n" + "="*50)
-            print("🗺️ MULTI-AGENT ITINERARY")
+            print("MULTI-AGENT ITINERARY")
             print("="*50 + "\n")
             print(itinerary)
 
