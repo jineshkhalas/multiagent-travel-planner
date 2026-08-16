@@ -126,10 +126,18 @@ def search_flights(source: str, destination: str) -> str:
     route_info, drive_km = fetch_api_route_info(source, destination)
     output_sections = []
 
-    # 1. Flights Search (Only if route is long distance >= 250 km)
-    if drive_km is not None and drive_km < 250:
+    dest_lower = destination.lower()
+    non_airport_spots = ["taranga", "dakor", "matheran", "saputara", "lonavala", "khandala", "mount abu", "panchgani", "mahabaleshwar"]
+    is_non_airport = any(spot in dest_lower for spot in non_airport_spots)
+
+    # 1. Flights Search (Provide flights whenever destination has airport/nearby hub)
+    if is_non_airport:
         flight_results = [
-            f"- Not applicable for this short distance (~{drive_km} km). Direct road drive, cab, bus, or local train is recommended."
+            f"- No commercial airport in {destination}. Direct road drive (car/cab), bus, or local train is recommended."
+        ]
+    elif drive_km is not None and drive_km < 90:
+        flight_results = [
+            f"- Direct road drive (~{drive_km} km) via expressway or local train is recommended for this short distance."
         ]
     else:
         flight_query = f"flights from {source} to {destination} Indigo Air India SpiceJet ticket fare price INR"

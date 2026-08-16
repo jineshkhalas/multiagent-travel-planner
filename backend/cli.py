@@ -37,7 +37,7 @@ RULES:
 2. EXTRACT ACCURATELY:
    - "source": Starting city/airport (e.g. "Delhi").
    - "destinations": Array of all intended destination cities in logical order (e.g. ["Delhi", "Kullu Manali"]).
-   - "duration_days": Total cumulative number of days for the entire trip (e.g. 6).
+   - "duration_days": Total cumulative number of days for the entire trip (e.g. 1, 2, 6).
    - "is_modification": Boolean indicating if this is modifying/extending a previous plan.
    - "modifications": Summary of what changed.
 3. OUTPUT FORMAT: Return strictly a valid JSON object. Do not wrap with markdown code blocks.
@@ -46,79 +46,31 @@ RULES:
 FORMATTING_SYSTEM_PROMPT = """You are a master travel planner. Your job is to format and compile the retrieved specialist sub-agent data into a clean, strictly structured, realistic, and non-repetitive travel itinerary.
 
 MANDATORY STRUCTURAL RULES:
-1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and hotels located in the explicitly requested target destinations.
-   - ABSOLUTELY NEVER add random distant cities unless explicitly requested!
-2. ALL 4 MAIN SECTIONS ARE STRICTLY MANDATORY (NEVER SKIP ANY SECTION):
+1. STRICT DESTINATION BOUNDARY: ONLY include activities, spots, and transit located in the explicitly requested target destinations.
+2. ALL 4 MAIN SECTIONS ARE STRICTLY MANDATORY:
    - Section 1: ### Flights & Transit Options
-   - Section 2: ### Weather Conditions (ALWAYS include this section!)
+   - Section 2: ### Weather Conditions
    - Section 3: ### Recommended Accommodations
    - Section 4: ### Detailed Day-by-Day Itinerary
-3. ZERO DUPLICATE ATTRACTIONS (CRITICAL RULE):
-   - Every single day (Day 1 through Day N) and time block MUST explore UNIQUE, NEVER-BEFORE-VISITED sights and activities.
-   - ABSOLUTELY NEVER repeat the same attraction (e.g. Hadimba Temple, Solang Valley, Rohtang Pass, Red Fort) on multiple days!
-   - Spread diverse attractions across the itinerary: temples, mountain viewpoints, waterfalls (Jogini), hot springs (Vashisht), old town markets, nature trails, riverside walks, and local cultural spots.
-4. ACCOMMODATION RULES (MULTI-DESTINATIONS):
-   - For multi-day trips with multiple destinations (e.g. Delhi and Kullu Manali): List verified hotels FOR EACH DESTINATION in the trip under Luxury (Top 2), Premium (Top 2), Budget (Top 2).
-   - For 1-day picnic trips (0 night stay): Output "- **Same-Day Return**: Not applicable for a 1-day trip (return to starting city the same evening/night). No overnight hotel stay is required."
-5. ORIGIN & TRANSIT CONTINUITY:
-   - For long-distance trips: List 3 distinct airlines (IndiGo, Air India, SpiceJet, Akasa) with realistic fares ₹2,500-₹8,500.
-   - The final Day N return journey MUST return to the designated starting city (e.g. Return to Delhi), NEVER an unrelated city.
-6. MULTI-DAY ITINERARY STRUCTURE:
-   - Generate EXACTLY the requested number of days (Day 1 to Day N).
-   - For every single day, include all three time blocks: **Morning**, **Afternoon**, **Evening**.
-   - On multi-day trips, intermediate evenings are relaxing at destination/dinner. ONLY the final Day N Evening is the return journey.
+3. ZERO DUPLICATE ATTRACTIONS:
+   - Every single day and time block MUST explore UNIQUE, NEVER-BEFORE-VISITED sights and activities.
+   - ABSOLUTELY NEVER repeat the same attraction on multiple days!
+4. STRICT ACCOMMODATION RULES:
+   - For 1-DAY TRIPS (Same-Day Return): Output ONLY:
+     "- **Same-Day Return**: Not applicable for a 1-day trip (return to [Source] the same evening/night). No overnight hotel stay is required."
+     ABSOLUTELY NEVER output any hotel lists (Luxury / Premium / Budget) on a 1-day trip!
+   - For MULTI-DAY TRIPS (2+ Days): List verified hotels for each destination under Luxury (Top 2), Premium (Top 2), and Budget (Top 2).
+5. FLIGHTS & TRANSIT:
+   - If the destination has a commercial airport or is an airport city (e.g. Mumbai, Delhi, Vadodara, Surat, Goa, Jaipur) OR if the user requested flights: Provide commercial flight options (IndiGo, Air India, SpiceJet with realistic fares ₹2,500-₹7,500).
+   - If the destination is a small non-airport town or hill station (e.g. Taranga Hills, Dakor, Matheran): Write "- **Direct Flights**: Not applicable for this short-distance route (no commercial airport in [Destination]). Direct road drive (car/cab), bus, or local train is recommended."
+6. ITINERARY TIME BLOCKS:
+   - For every day (Day 1 to Day N), include: **Morning**, **Afternoon**, **Evening**.
+   - On 1-day trips, Evening is the return journey back to [Source].
 7. ALL PRICES IN INR (₹):
    - Never use $ symbols. All costs must be in INR (₹).
 8. CLEAN HEADERS:
    - Do NOT wrap markdown headers in bold (use `### Flights & Transit Options`, NOT `### **Flights & Transit Options**`).
    - Do NOT output raw emoji characters in headers or text.
-
-STRICT OUTPUT TEMPLATE:
-
-### Flights & Transit Options
-
-#### Flights
-- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
-- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
-- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
-
-#### Trains
-- **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-- **[Train Name & Number 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
-
-#### Road & Local Transit
-- **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
-- **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
-- **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
-
-### Weather Conditions
-
-#### Live Weather & Packing Tips
-- **Temperature & Condition**: [Current Temp]°C, [Condition]
-- **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
-- **Packing Advice**: [Practical clothing and travel essentials advice]
-
-### Recommended Accommodations
-
-#### Luxury / 5-Star Stays (Top 2 per destination)
-- **[Real Hotel Name 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-- **[Real Hotel Name 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-
-#### Premium / 3-Star & 4-Star Stays (Top 2 per destination)
-- **[Real Hotel Name 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-- **[Real Hotel Name 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-
-#### Budget & Cheap Stays (Top 2 per destination)
-- **[Real Hotel Name 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-- **[Real Hotel Name 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
-
-### Detailed Day-by-Day Itinerary
-
-For each Day (Day 1 to Day N):
-#### Day X: [City/Region Theme]
-- **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
-- **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
-- **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
 """
 
 async def call_llm(system_prompt: str, user_prompt: str) -> str:
@@ -163,11 +115,11 @@ class PlannerFlow:
     async def run(self, request: str, history: List[Dict[str, str]] = None, current_plan: str = ""):
         history_formatted = ""
         if history:
-            for turn in history[-6:]:
+            for turn in history[-4:]:
                 role = "User" if turn.get("role") == "user" else "Assistant"
                 content = turn.get("content", "")
-                if role == "Assistant" and len(content) > 300:
-                    content = content[:300] + "... [existing itinerary]"
+                if role == "Assistant" and len(content) > 200:
+                    content = content[:200] + "... [previous plan]"
                 history_formatted += f"{role}: {content}\n"
 
         context_prompt = f"""
@@ -175,13 +127,12 @@ CONVERSATION HISTORY:
 {history_formatted if history_formatted else "No previous history."}
 
 CURRENT SAVED ITINERARY SUMMARY:
-{current_plan[:500] if current_plan else "No previous itinerary."}
+{current_plan[:400] if current_plan else "No previous itinerary."}
 
 NEW USER MESSAGE:
 {request}
 
-Extract and resolve persistent trip parameters (source, destinations list, duration_days, is_modification, modifications).
-If the user extends or adds days to an existing trip (e.g. 'add 4 more days to kullu manali'), add the days to previous duration (e.g. 2 + 4 = 6 days) and include both destinations. Return JSON only.
+Extract and resolve persistent trip parameters (source, destinations list, duration_days, is_modification, modifications). Return JSON only.
 """
         print("[System] Resolving trip context with conversation memory...")
         ctx_response = await call_llm(CONTEXT_SYSTEM_PROMPT, context_prompt)
@@ -215,6 +166,14 @@ If the user extends or adds days to an existing trip (e.g. 'add 4 more days to k
 
         import re
         lower_msg = request.lower()
+        day_match = re.search(r'(\d+)\s*(?:-| )?\s*days?', lower_msg)
+        if day_match:
+            duration_days = int(day_match.group(1))
+        elif "one day" in lower_msg or "1-day" in lower_msg:
+            duration_days = 1
+        elif "picnic" in lower_msg:
+            duration_days = 1
+
         if "add" in lower_msg and "more day" in lower_msg:
             add_match = re.search(r'add\s*(\d+)\s*more\s*days?', lower_msg)
             if add_match:
@@ -222,25 +181,19 @@ If the user extends or adds days to an existing trip (e.g. 'add 4 more days to k
                 if duration_days <= added:
                     duration_days = duration_days + added
 
-        if "manali" in lower_msg or "kullu" in lower_msg:
-            if "Kullu Manali" not in destinations and "Manali" not in destinations:
-                destinations.append("Kullu Manali")
-
-        if not destinations or destinations == ["Unknown"]:
-            if "dakor" in lower_msg:
-                destinations = ["Dakor"]
-            elif "taranga" in lower_msg:
-                destinations = ["Taranga Hills"]
-            elif "mumbai" in lower_msg:
-                destinations = ["Mumbai"]
-            elif "goa" in lower_msg:
-                destinations = ["Goa"]
-            elif "manali" in lower_msg:
-                destinations = ["Kullu Manali"]
-            elif "delhi" in lower_msg:
-                destinations = ["Delhi"]
-            else:
-                destinations = ["Delhi"]
+        if "vadodara" in lower_msg or "baroda" in lower_msg:
+            if "Vadodara" not in destinations:
+                destinations = ["Vadodara"]
+        elif "dakor" in lower_msg:
+            destinations = ["Dakor"]
+        elif "taranga" in lower_msg:
+            destinations = ["Taranga Hills"]
+        elif "mumbai" in lower_msg and "to mumbai" in lower_msg:
+            destinations = ["Mumbai"]
+        elif "jaipur" in lower_msg:
+            destinations = ["Jaipur"]
+        elif not destinations or destinations == ["Unknown"]:
+            destinations = ["Vadodara" if "vadodara" in lower_msg else "Delhi"]
 
         if source == "Unknown":
             if "ahmedabad" in lower_msg:
@@ -252,7 +205,7 @@ If the user extends or adds days to an existing trip (e.g. 'add 4 more days to k
             elif "pune" in lower_msg:
                 source = "Pune"
 
-        primary_dest = destinations[0] if destinations else "Delhi"
+        primary_dest = destinations[0] if destinations else "Vadodara"
         all_dest_str = ", ".join(destinations)
         is_day_trip = (duration_days == 1)
 
@@ -289,23 +242,97 @@ If the user extends or adds days to an existing trip (e.g. 'add 4 more days to k
 
         if is_day_trip:
             trip_type_instructions = f"""
-TRIP TYPE: 1-DAY SAME-DAY RETURN PICNIC TRIP TO {all_dest_str}
-- FLIGHTS: Under "#### Flights", write:
-  - **Direct Flights**: Not applicable for this short-distance 1-day route. Direct road drive, cab, bus, or local train is recommended.
-- HOTELS: Under "### Recommended Accommodations", write:
-  - **Same-Day Return**: Not applicable for a 1-day trip (return to {source} the same evening/night). No overnight hotel stay is required.
-- PROXIMITY & PRIMARY ATTRACTIONS (CRITICAL):
-  * Prioritize the PRIMARY, ICONIC attractions situated ON or immediately adjacent (0-5 km) to {all_dest_str} (e.g. for Taranga Hills: Shri Ajitnatha Bhagwan Jain Derasar, Buddhist / Jogida Rock-Cut Caves, Siddhashila & Kotishila hill trek, Taramati Peak, temple Bhojanshala).
-  * Group all Morning & Afternoon activities in the immediate area. ABSOLUTELY NEVER scatter to random stepwells or villages 30-40 km away!
-- ITINERARY: Day 1 Evening must include sunset/tea and return transit back home to {source}.
+TRIP TYPE: 1-DAY SAME-DAY RETURN TRIP TO {all_dest_str} (NO OVERNIGHT HOTEL STAY)
+
+OUTPUT TEMPLATE FOR THIS 1-DAY TRIP:
+
+### Flights & Transit Options
+
+#### Flights
+- [If {all_dest_str} or nearby city has an airport (e.g. Vadodara, Surat, Mumbai, Delhi, Goa) OR if user requested flights: Provide morning departure and evening return flights:
+  - **IndiGo**: Dep: 07:30 - Arr: 08:30 | Evening Return: 19:30 - 20:30 | Price: ₹3,200 | Duration: 1h 0m
+  - **Air India**: Dep: 09:00 - Arr: 10:00 | Evening Return: 20:00 - 21:00 | Price: ₹3,800 | Duration: 1h 0m
+  Else if non-airport town (e.g. Taranga Hills, Dakor):
+  - **Direct Flights**: Not applicable for this short-distance route (no commercial airport in {all_dest_str}). Direct road drive (car/cab), bus, or local train is recommended.]
+
+#### Trains
+- **[Train 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Train 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+
+#### Road & Local Transit
+- **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
+- **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
+- **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
+
+### Weather Conditions
+
+#### Live Weather & Packing Tips
+- **Temperature & Condition**: [Current Temp]°C, [Condition]
+- **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
+- **Packing Advice**: [Practical clothing and travel advice]
+
+### Recommended Accommodations
+
+- **Same-Day Return**: Not applicable for a 1-day trip (return to {source} the same evening/night). No overnight hotel stay is required.
+(STRICT: Do NOT output any Luxury / Premium / Budget hotel categories!)
+
+### Detailed Day-by-Day Itinerary
+
+#### Day 1: {all_dest_str} Day Tour
+- **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Evening**: [Activity 1] • Dinner (₹[Amount]) • Return journey back to {source} [by flight or road/train]
 """
         else:
             trip_type_instructions = f"""
 TRIP TYPE: {duration_days}-DAY MULTI-DAY TRIP COVERING: {all_dest_str}
-- FLIGHTS: Under "#### Flights", provide 3 distinct airlines with realistic fares ₹2,500-₹8,500, departure/arrival times, and duration.
-- HOTELS: Under "### Recommended Accommodations", list verified hotel names in bold FOR EACH DESTINATION in the trip ({all_dest_str}) under Luxury, Premium, and Budget tiers.
-- UNIQUE ATTRACTIONS: Ensure ZERO duplicate attractions across all {duration_days} days. Every day must feature brand-new sights and activities!
-- ITINERARY: Generate exactly {duration_days} Days (Day 1 through Day {duration_days}). Intermediate evenings are relaxing at destination; ONLY Day {duration_days} Evening is the return journey back to {source}.
+
+OUTPUT TEMPLATE FOR THIS MULTI-DAY TRIP:
+
+### Flights & Transit Options
+
+#### Flights
+- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+
+#### Trains
+- **[Train 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+- **[Train 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
+
+#### Road & Local Transit
+- **Car / Cab**: ~[X] km | ~[Y] hours drive | Approx. ₹[Fare]
+- **Bus / State Transport**: AC Sleeper / Volvo | ~[Y] hours | Approx. ₹[Fare]
+- **Local City Transit**: Autos, Metro, and Taxis available for ₹10 - ₹150 per ride.
+
+### Weather Conditions
+
+#### Live Weather & Packing Tips
+- **Temperature & Condition**: [Current Temp]°C, [Condition]
+- **Humidity & Wind**: [Humidity]%, [Wind Speed] km/h
+- **Packing Advice**: [Practical clothing and travel essentials advice]
+
+### Recommended Accommodations
+
+#### Luxury / 5-Star Stays (Top 2 per destination)
+- **[Real Hotel 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+
+#### Premium / 3-Star & 4-Star Stays (Top 2 per destination)
+- **[Real Hotel 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+
+#### Budget & Cheap Stays (Top 2 per destination)
+- **[Real Hotel 1]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel 2]**: [City - Location / Highlights] | Approx. ₹[Tariff] / night
+
+### Detailed Day-by-Day Itinerary
+
+For each Day (Day 1 to Day {duration_days}):
+#### Day X: [City/Region Theme]
+- **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
+- **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
 """
 
         format_context = f"""
@@ -327,10 +354,9 @@ USER REQUEST:
 {request}
 
 CRITICAL INSTRUCTIONS:
-1. Include all 4 mandatory sections with realistic costs in INR (₹).
-2. NEVER repeat the same attraction on multiple days.
-3. List accommodations for each visited destination city.
-4. Ensure the final return journey is back to {source}.
+1. Follow the exact OUTPUT TEMPLATE provided above.
+2. If 1-Day Trip, output ONLY the single Same-Day Return note under Accommodations.
+3. If flights are requested or airport exists in {all_dest_str}, provide flight options.
 """
         print("[*] Synthesizing verified, anti-hallucinated itinerary with strict structure...")
         final_itinerary = await call_llm(FORMATTING_SYSTEM_PROMPT, format_context)
