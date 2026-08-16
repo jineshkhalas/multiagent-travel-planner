@@ -28,7 +28,6 @@ To produce accurate, practical, and grounded itineraries, each agent combines **
 - **Modern User Experience & Dashboard**:
   - Dual theme with instant Light / Dark mode toggle.
   - Newest-first dashboard cards with real-time Firebase Firestore synchronization.
-  - PDF Export, Markdown download, and one-click clipboard copying.
   - Google Authentication via Firebase Auth.
 
 ---
@@ -90,8 +89,8 @@ flowchart TD
 ### Frontend
 - **React 19 & Vite**: Ultra-fast single-page application framework.
 - **Firebase Authentication & Cloud Firestore**: Secure user login and real-time trip persistence.
-- **Lucide React**: Vector icons.
-- **html2pdf.js & Canvas**: Client-side PDF export and formatting.
+- **React-Markdown**: Rich markdown rendering for structured travel plans.
+- **Tailwind CSS & Lucide React**: Clean vector iconography and modern responsive styling.
 - **Custom Typography**: Google Fonts McLaren (Headings) and Plus Jakarta Sans (Body).
 
 ---
