@@ -1,16 +1,10 @@
 # Multi-Agent AI Travel Planner (A2A Architecture)
 
+> **Live Demo**: [https://multiagent-travel-planner.vercel.app](https://multiagent-travel-planner.vercel.app)
+
 An end-to-end full-stack AI travel planning platform built with a multi-agent system. Instead of relying on a single monolithic LLM prompt that hallucinates routes, hotel names, or prices, this project coordinates **Specialist AI Agents** using Google's **Agent Development Kit (ADK)** and the **Agent-to-Agent (A2A)** architecture.
 
 To produce accurate, practical, and grounded itineraries, each agent combines **Structured Geographical & Meteorological APIs** (for verified locations, exact coordinates, and property names) with **Live Web Search** (for real flight schedules, IRCTC train tickets, entry fees, and hotel room tariffs in INR).
-
----
-
-## Live Links & Repository
-
-- **GitHub Repository**: [github.com/jineshkhalas/multiagent-travel-planner](https://github.com/jineshkhalas/multiagent-travel-planner)
-- **Live Frontend**: [multiagent-travel-planner.vercel.app](https://multiagent-travel-planner.vercel.app) *(or your deployed Vercel URL)*
-- **Live Backend API**: [travel-planner-a2a.onrender.com](https://travel-planner-a2a.onrender.com)
 
 ---
 
