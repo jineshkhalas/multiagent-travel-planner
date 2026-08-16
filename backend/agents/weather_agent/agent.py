@@ -29,7 +29,10 @@ def geocode_city(city: str):
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if geo_key and geo_key != "your_geoapify_key_here":
         try:
-            r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
+            r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
+            if not r.get("features"):
+                r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
+
             if r.get("features"):
                 lon, lat = r["features"][0]["geometry"]["coordinates"]
                 country = r["features"][0]["properties"].get("country", "")

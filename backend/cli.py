@@ -57,6 +57,10 @@ MANDATORY STRUCTURAL RULES:
      * List distinct airlines (e.g. IndiGo, Air India, SpiceJet, Akasa Air) with realistic departure times and durations.
    - TRAINS: Standard Indian Railways fares range between ₹350 and ₹2,500.
    - HOTELS: Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Luxury heritage stay | Approx. ₹15,000 / night`). DO NOT use generic `- **Hotel 1**: ...`.
+   - SHORT DISTANCE & ROAD TRIPS (< 200 km or < 300 km):
+     * If the distance is short (under ~200 km) or a 1-day road/picnic trip without commercial flights, under "#### Flights"write:
+     "- **Flights**: Not applicable for this short-distance route (Direct car, cab, or local train recommended)."
+     * Do NOT fabricate commercial airline flights when no commercial airports connect the two nearby towns.
 4. MULTI-DAY ITINERARY STRUCTURE:
    - Generate EXACTLY the requested number of days.
    - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:

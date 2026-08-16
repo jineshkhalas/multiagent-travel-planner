@@ -24,9 +24,14 @@ def fetch_api_places(destination: str) -> list:
 
     try:
         # Step 1: Geocode destination
-        geo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&apiKey={geo_key}"
+        geo_url = fgeo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&filter=countrycode:in&apiKey={geo_key}"
         geo_res = requests.get(geo_url, timeout=6).json()
         
+        if not geo_res.get("features"):
+            geo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&apiKey={geo_key}"
+            geo_res = requests.get(geo_url, timeout=6).json()
+            return []
+
         if not geo_res.get("features"):
             return []
 

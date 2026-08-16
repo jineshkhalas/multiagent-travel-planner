@@ -24,8 +24,12 @@ def fetch_api_hotels(city: str) -> list:
 
     try:
         # Step 1: Geocode city
-        geo_url = f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}"
+        geo_url = f"https://api.geoapify.com/v1/geocode/search?text={city}&filter=countrycode:in&apiKey={geo_key}"
         geo_res = requests.get(geo_url, timeout=6).json()
+
+        if not geo_res.get("features"):
+            geo_url = f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}"
+            geo_res = requests.get(geo_url, timeout=6).json()
 
         if not geo_res.get("features"):
             return []
