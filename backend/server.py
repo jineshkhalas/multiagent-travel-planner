@@ -140,7 +140,12 @@ async def call_llm(system_prompt: str, user_prompt: str) -> str:
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-    models = ["groq/llama-3.1-8b-instant", "groq/llama-3.3-70b-versatile"]
+    models = [
+        "groq/openai/gpt-oss-20b",
+        "groq/openai/gpt-oss-safeguard-20b",
+        "groq/openai/gpt-oss-120b",
+        "groq/llama-3.3-70b-versatile"
+    ]
 
     for attempt in range(4):
         for model_name in models:
