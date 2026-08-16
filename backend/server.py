@@ -303,12 +303,15 @@ If the user extends or adds days to an existing trip (e.g. 'add 4 more days to k
 
         if is_day_trip:
             trip_type_instructions = f"""
-TRIP TYPE: 1-DAY SAME-DAY RETURN PICNIC TRIP
+TRIP TYPE: 1-DAY SAME-DAY RETURN PICNIC TRIP TO {all_dest_str}
 - FLIGHTS: Under "#### Flights", write:
   - **Direct Flights**: Not applicable for this short-distance 1-day route. Direct road drive, cab, bus, or local train is recommended.
 - HOTELS: Under "### Recommended Accommodations", write:
   - **Same-Day Return**: Not applicable for a 1-day trip (return to {source} the same evening/night). No overnight hotel stay is required.
-- ITINERARY: Day 1 Evening must include return transit back home to {source}.
+- PROXIMITY & PRIMARY ATTRACTIONS (CRITICAL):
+  * Prioritize the PRIMARY, ICONIC attractions situated ON or immediately adjacent (0-5 km) to {all_dest_str} (e.g. for Taranga Hills: Shri Ajitnatha Bhagwan Jain Derasar, Buddhist / Jogida Rock-Cut Caves, Siddhashila & Kotishila hill trek, Taramati Peak, temple Bhojanshala).
+  * Group all Morning & Afternoon activities in the immediate area. ABSOLUTELY NEVER scatter to random stepwells or villages 30-40 km away!
+- ITINERARY: Day 1 Evening must include sunset/tea and return transit back home to {source}.
 """
         else:
             trip_type_instructions = f"""
