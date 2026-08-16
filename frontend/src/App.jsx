@@ -339,7 +339,10 @@ export default function App() {
       }
 
       const data = await response.json();
-      const planText = data.itinerary || data.reply || "Itinerary ready.";
+      const planText = data.itinerary || data.reply || "";
+      if (!planText || planText.trim().length < 30) {
+        throw new Error("Unable to synthesize itinerary. Please try sending your request again.");
+      }
       
       const assistantMsg = { 
         id: `msg_${Date.now()}`,

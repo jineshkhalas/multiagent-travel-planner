@@ -135,28 +135,35 @@ For each Day (Day 1 to Day N):
 """
 
 async def call_llm(system_prompt: str, user_prompt: str) -> str:
-    """Direct LiteLLM call with automatic backoff on rate limits."""
+    """Direct LiteLLM call with automatic multi-model fallback and backoff on rate limits."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
+    models = ["groq/llama-3.1-8b-instant", "groq/llama-3.3-70b-versatile"]
+
     for attempt in range(4):
-        try:
-            resp = await litellm.acompletion(
-                model="groq/llama-3.1-8b-instant",
-                messages=messages,
-                temperature=0.3
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            err_str = str(e).lower()
-            if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
-                wait_sec = 2.5 * (attempt + 1)
-                print(f"[Backend API] Rate limit hit (attempt {attempt+1}/4). Retrying in {wait_sec}s...")
-                await asyncio.sleep(wait_sec)
-            else:
-                print(f"[Backend API] LLM call error: {e}")
-                break
+        for model_name in models:
+            try:
+                resp = await litellm.acompletion(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.3
+                )
+                content = resp.choices[0].message.content.strip()
+                if content:
+                    return content
+            except Exception as e:
+                err_str = str(e).lower()
+                if "rate_limit" in err_str or "429" in err_str or "tokens per minute" in err_str:
+                    print(f"[Backend API] Rate limit hit on {model_name}. Trying fallback...")
+                    continue
+                else:
+                    print(f"[Backend API] LLM error on {model_name}: {e}")
+
+        wait_sec = 2.0 * (attempt + 1)
+        print(f"[Backend API] All models busy. Waiting {wait_sec}s before retry (attempt {attempt+1}/4)...")
+        await asyncio.sleep(wait_sec)
 
     return ""
 
