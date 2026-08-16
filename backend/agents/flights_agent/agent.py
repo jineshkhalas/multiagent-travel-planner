@@ -30,6 +30,16 @@ def geocode_city(city: str):
     """Geocodes city using Geoapify with Open-Meteo fallback."""
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if geo_key and geo_key != "your_geoapify_key_here":
+        # 1. Try type=city in India first
+        try:
+            r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&type=city&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
+            if r.get("features"):
+                lon, lat = r["features"][0]["geometry"]["coordinates"]
+                return lat, lon
+        except Exception:
+            pass
+
+        # 2. Try smart query variants
         queries = [city]
         if "hills" in city.lower():
             queries.append(city.replace("Hills", "Hill").replace("hills", "hill"))
@@ -40,16 +50,12 @@ def geocode_city(city: str):
             try:
                 r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={q}&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
                 for f in r.get("features", []):
-                    formatted = f.get("properties", {}).get("formatted", "")
-                    name = f.get("properties", {}).get("name", "")
-                    first_word = q.lower().split()[0]
-                    if first_word in formatted.lower() or first_word in name.lower() or len(r.get("features", [])) == 1:
-                        lon, lat = f["geometry"]["coordinates"]
-                        return lat, lon
+                    lon, lat = f["geometry"]["coordinates"]
+                    return lat, lon
             except Exception as e:
                 print(f"[FlightsAgent] Geoapify geocode error: {e}")
 
-        # Global fallback if not found in India
+        # 3. Global fallback if not found in India
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):

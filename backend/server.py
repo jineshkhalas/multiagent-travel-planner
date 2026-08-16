@@ -47,7 +47,7 @@ RULES:
 2. EXTRACT ACCURATELY:
    - "source": Starting city/airport.
    - "destinations": Array of all intended destination cities/places in logical travel order (e.g. ["Mumbai", "Lonavala"]).
-   - "duration_days": Total number of days for the trip (e.g. 5). If unspecified or if user asks for a picnic / day trip, set to 1.
+   - "duration_days": Total number of days for the trip (e.g. 2, 3, 5).
    - "is_modification": Boolean indicating if this is modifying/extending a previous plan.
    - "modifications": Summary of what changed.
 3. OUTPUT FORMAT: Return strictly a valid JSON object. Do not wrap with markdown code blocks.
@@ -63,25 +63,17 @@ MANDATORY STRUCTURAL RULES:
    - Section 2: ### Weather Conditions (ALWAYS include this section!)
    - Section 3: ### Recommended Accommodations
    - Section 4: ### Detailed Day-by-Day Itinerary
-3. 1-DAY PICNIC / SHORT ROAD TRIP RULES (CRITICAL):
-   - If duration is 1 Day OR distance is under 250 km (e.g. Ahmedabad to Dakor, Pune to Matheran):
-     * FLIGHTS: Under "#### Flights", write:
-       "- **Direct Flights**: Not applicable for this short-distance route (Direct road drive, cab, bus, or local train is recommended)."
-       ABSOLUTELY NEVER fabricate commercial airline flights when no commercial airports exist or for short road trips!
-     * ACCOMMODATIONS: Under "### Recommended Accommodations", write:
-       "- **Same-Day Return**: Not applicable for a 1-day trip (return to [Source] the same evening/night). No overnight hotel stay is required."
-     * ITINERARY: Day 1 Evening MUST conclude with buying local snacks/specialties and the return journey back to [Source].
-4. MULTI-DAY ITINERARY STRUCTURE:
-   - Generate EXACTLY the requested number of days.
-   - FOR EVERY SINGLE DAY (Day 1 to Day N), you MUST include all three time blocks:
-     - **Morning**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
-     - **Afternoon**: [Activity 1] (Distance: X km | Taxi: ₹X | Entry: ₹X | Food: ₹X) • [Activity 2]
-     - **Evening**: [Activity 1] (Taxi: ₹X | Entry: ₹X) • Dinner at local restaurant (₹X)
-     NEVER skip Afternoon or Evening on any day!
-5. REALISTIC PRICING SANITY CHECK (CRITICAL):
-   - FLIGHTS (for long-distance multi-day trips with airports only): Fares ₹2,500 - ₹8,500.
-   - TRAINS: Standard Indian Railways fares range between ₹350 and ₹2,500.
-   - HOTELS (for multi-day trips with overnight stays): Put the REAL Hotel Name in bold (e.g. `- **The Imperial, New Delhi**: Janpath | Approx. ₹15,000 / night`).
+3. TRANSIT & FLIGHT RULES:
+   - For long-distance trips (e.g. Delhi to Mumbai, Bangalore to Goa): List 3 distinct airlines (IndiGo, Air India, SpiceJet, Akasa) with realistic fares ₹2,500-₹8,500, departure/arrival times, and duration.
+   - For short-distance road trips (< 250 km) or 1-day picnics (e.g. Ahmedabad to Dakor): Output "- **Direct Flights**: Not applicable for this short-distance route (Direct road drive, cab, bus, or local train is recommended)."
+4. ACCOMMODATION RULES:
+   - For multi-day trips (2+ Days with overnight stays): List verified hotel properties with real names in bold under Luxury (Top 2), Premium (Top 2), Budget (Top 2).
+   - For 1-day picnic trips (0 night stay): Output "- **Same-Day Return**: Not applicable for a 1-day trip (return to starting city the same evening/night). No overnight hotel stay is required."
+5. MULTI-DAY ITINERARY STRUCTURE:
+   - Generate EXACTLY the requested number of days (Day 1 to Day N).
+   - For every single day, include all three time blocks: **Morning**, **Afternoon**, **Evening**.
+   - On a multi-day trip, Day 1 Evening is relaxing at the destination / dinner. ONLY the final Day N Evening is the return journey.
+   - On a 1-day trip, Day 1 Evening is the return journey.
 6. ALL PRICES IN INR (₹):
    - Never use $ symbols. All costs must be in INR (₹).
 7. CLEAN HEADERS:
@@ -93,7 +85,9 @@ STRICT OUTPUT TEMPLATE:
 ### Flights & Transit Options
 
 #### Flights
-- [If 1-Day Trip or short distance: **Direct Flights**: Not applicable for this short-distance route (Direct road drive, cab, bus, or local train is recommended). | If long distance with airports: List up to 3 distinct airlines: - **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare] | Duration: [X]h [Y]m]
+- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
 
 #### Trains
 - **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
@@ -114,21 +108,24 @@ STRICT OUTPUT TEMPLATE:
 ### Recommended Accommodations
 
 #### Luxury / 5-Star Stays (Top 2)
-- [If 1-Day Trip: **Same-Day Return**: Not applicable for a 1-day trip (return to [Source] the same evening/night). No overnight hotel stay is required. | If Multi-Day Trip: - **[Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night]
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
 #### Premium / 3-Star & 4-Star Stays (Top 2)
-- [If Multi-Day Trip: - **[Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night]
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
 #### Budget & Cheap Stays (Top 2)
-- [If Multi-Day Trip: - **[Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night]
+- **[Real Hotel Name 1]**: [Location / Highlights] | Approx. ₹[Tariff] / night
+- **[Real Hotel Name 2]**: [Location / Highlights] | Approx. ₹[Tariff] / night
 
 ### Detailed Day-by-Day Itinerary
 
-For each Day (Day 1 to the final Day):
+For each Day (Day 1 to Day N):
 #### Day X: [City/Region Theme]
 - **Morning**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
 - **Afternoon**: [Activity 1] (Distance: [X] km | Taxi: ₹[Amount] | Entry: ₹[Amount] | Food: ₹[Amount]) • [Activity 2]
-- **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount]) [If final day / 1-day trip: • Return journey back to [Source]]
+- **Evening**: [Activity 1] (Taxi: ₹[Amount] | Entry: ₹[Amount]) • Dinner at local restaurant (₹[Amount])
 """
 
 async def call_llm(system_prompt: str, user_prompt: str) -> str:
@@ -210,9 +207,23 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
         except Exception as e:
             print(f"[Backend API] Notice: Fallback parameter extraction used ({e})")
 
-        # Explicit detection for 1-day / picnic / day trip
+        # Accurate regex extraction for duration in user message
+        import re
         lower_msg = current_message.lower()
-        if "1 day" in lower_msg or "one day" in lower_msg or "picnic" in lower_msg or "day trip" in lower_msg:
+        day_match = re.search(r'(\d+)\s*(?:-| )?\s*days?', lower_msg)
+        if day_match:
+            duration_days = int(day_match.group(1))
+        elif "one day" in lower_msg or "1-day" in lower_msg:
+            duration_days = 1
+        elif "two day" in lower_msg or "2-day" in lower_msg:
+            duration_days = 2
+        elif "three day" in lower_msg or "3-day" in lower_msg:
+            duration_days = 3
+        elif "four day" in lower_msg or "4-day" in lower_msg:
+            duration_days = 4
+        elif "five day" in lower_msg or "5-day" in lower_msg:
+            duration_days = 5
+        elif "picnic" in lower_msg or "day trip" in lower_msg:
             duration_days = 1
 
         # Heuristic fallbacks if extraction was ambiguous
@@ -221,9 +232,9 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
                 destinations = ["Dakor"]
             elif "taranga" in lower_msg:
                 destinations = ["Taranga Hills"]
-            elif "delhi" in lower_msg:
+            elif "delhi" in lower_msg and "to delhi" in lower_msg:
                 destinations = ["Delhi"]
-            elif "mumbai" in lower_msg:
+            elif "mumbai" in lower_msg and "to mumbai" in lower_msg:
                 destinations = ["Mumbai"]
             elif "goa" in lower_msg:
                 destinations = ["Goa"]
@@ -234,19 +245,19 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
             elif "varanasi" in lower_msg:
                 destinations = ["Varanasi"]
             else:
-                destinations = ["Dakor" if "dakor" in lower_msg else "Delhi"]
+                destinations = ["Mumbai" if "mumbai" in lower_msg else "Delhi"]
 
         if source == "Unknown":
             if "ahmedabad" in lower_msg:
                 source = "Ahmedabad"
-            elif "mumbai" in lower_msg and "to" in lower_msg:
-                source = "Mumbai"
-            elif "delhi" in lower_msg and "from delhi" in lower_msg:
+            elif "delhi" in lower_msg and ("from delhi" in lower_msg or "delhi" in lower_msg):
                 source = "Delhi"
+            elif "mumbai" in lower_msg and "from mumbai" in lower_msg:
+                source = "Mumbai"
             elif "pune" in lower_msg:
                 source = "Pune"
 
-        primary_dest = destinations[0] if destinations else "Delhi"
+        primary_dest = destinations[0] if destinations else "Mumbai"
         all_dest_str = ", ".join(destinations)
         is_day_trip = (duration_days == 1)
 
@@ -268,7 +279,7 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
         if len(destinations) > 1:
             tasks.append(asyncio.to_thread(search_flights, destinations[0], destinations[1]))
 
-        # 3. Hotels (Only fetch for multi-day trips with overnight stays)
+        # 3. Hotels (Fetch whenever multi-day trip with duration > 1)
         if duration_days > 1:
             for dest in destinations:
                 tasks.append(asyncio.to_thread(search_hotels, dest))
@@ -280,12 +291,31 @@ Extract and resolve persistent trip parameters (source, destinations list, durat
         subagent_results = await asyncio.gather(*tasks, return_exceptions=True)
         subagent_text = "\n---\n".join([str(r) for r in subagent_results if not isinstance(r, Exception)])
 
+        if is_day_trip:
+            trip_type_instructions = f"""
+TRIP TYPE: 1-DAY SAME-DAY RETURN PICNIC TRIP
+- FLIGHTS: Under "#### Flights", write:
+  - **Direct Flights**: Not applicable for this short-distance 1-day route. Direct road drive, cab, bus, or local train is recommended.
+- HOTELS: Under "### Recommended Accommodations", write:
+  - **Same-Day Return**: Not applicable for a 1-day trip (return to {source} the same evening/night). No overnight hotel stay is required.
+- ITINERARY: Day 1 Evening must include return transit back home to {source}.
+"""
+        else:
+            trip_type_instructions = f"""
+TRIP TYPE: {duration_days}-DAY MULTI-DAY TRIP (WITH OVERNIGHT HOTEL STAYS)
+- FLIGHTS: Under "#### Flights", provide 3 distinct airlines (IndiGo, Air India, SpiceJet, Akasa) with realistic fares ₹2,500-₹8,500, departure/arrival times, and duration.
+- HOTELS: Under "### Recommended Accommodations", list verified hotel names in bold under Luxury (Top 2), Premium (Top 2), and Budget (Top 2).
+- ITINERARY: Generate exactly {duration_days} Days (Day 1 through Day {duration_days}). Day 1 Evening is relaxing at the destination; ONLY Day {duration_days} Evening is the return journey back to {source}.
+"""
+
         format_context = f"""
 TARGET TRIP PARAMETERS:
 - Origin/Source: {source}
 - Target Destinations ONLY: {all_dest_str} (STRICT: Do NOT include any other cities!)
-- Duration: {duration_days} Day(s) {"(1-DAY SAME-DAY RETURN PICNIC TRIP - NO FLIGHTS & NO HOTELS NEEDED)" if is_day_trip else ""}
+- Duration: {duration_days} Day(s)
 - Modification Request: {modifications if is_mod else "New Itinerary"}
+
+{trip_type_instructions}
 
 PREVIOUS ITINERARY (FOR CONTINUITY IF MODIFYING):
 {current_plan if current_plan else "None"}
@@ -296,10 +326,9 @@ RAW RETRIEVED SUB-AGENT DATA:
 USER REQUEST:
 {current_message}
 
-CRITICAL RULES FOR THIS TRIP:
-{"1. Since this is a 1-Day picnic trip: State that flights and overnight hotels are NOT applicable (same-day return to " + source + ")." if is_day_trip else "1. Multi-day trip with verified hotels and transit."}
-2. Ensure realistic local taxi, entry tickets, and food budgets in INR (₹).
-3. Day 1 Evening must include return transit back home to {source} if 1-day trip.
+CRITICAL RULES:
+1. Ensure all 4 sections are present with realistic costs in INR (₹).
+2. Follow the specific TRIP TYPE instructions above.
 """
         print("[Backend API] Generating verified, non-hallucinated itinerary with strict structure...")
         final_itinerary = await call_llm(FORMATTING_SYSTEM_PROMPT, format_context)
