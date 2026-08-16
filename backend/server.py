@@ -172,21 +172,24 @@ Return JSON only.
                 clean_json = clean_json[start_idx:end_idx]
             
             parsed = json.loads(clean_json)
-            source = parsed.get("source", "Unknown")
+            raw_src = parsed.get("source")
+            if raw_src and isinstance(raw_src, str) and raw_src.strip().lower() not in ["none", "null", "unknown", ""]:
+                source = raw_src.strip()
+
             raw_dest = parsed.get("destinations", [])
             if isinstance(raw_dest, list):
-                destinations = [d for d in raw_dest if d and d != "Unknown"]
-            elif isinstance(raw_dest, str) and raw_dest != "Unknown":
-                destinations = [d.strip() for d in raw_dest.split(",")]
+                destinations = [str(d).strip() for d in raw_dest if d and str(d).strip().lower() not in ["none", "null", "unknown", ""]]
+            elif isinstance(raw_dest, str) and raw_dest.strip().lower() not in ["none", "null", "unknown", ""]:
+                destinations = [str(d).strip() for d in raw_dest.split(",") if d and str(d).strip().lower() not in ["none", "null", "unknown", ""]]
             
-            duration_days = parsed.get("duration_days", 3)
-            is_mod = parsed.get("is_modification", False)
-            modifications = parsed.get("modifications", "")
+            duration_days = parsed.get("duration_days") or 3
+            is_mod = bool(parsed.get("is_modification", False))
+            modifications = str(parsed.get("modifications") or "")
         except Exception as e:
             print(f"[Backend API] Notice: Fallback parameter extraction used ({e})")
 
         import re
-        lower_msg = current_message.lower()
+        lower_msg = current_message.lower() if current_message else ""
         day_match = re.search(r'(\d+)\s*(?:-| )?\s*days?', lower_msg)
         if day_match:
             duration_days = int(day_match.group(1))
@@ -210,8 +213,8 @@ Return JSON only.
             extracted_src = from_match.group(1).strip().title()
             if extracted_src:
                 source = extracted_src
-        elif source == "Unknown":
-            if "from ahmedabad" in lower_msg or "ahmedabad" in lower_msg and "to" in lower_msg:
+        elif not source or source == "Unknown":
+            if "from ahmedabad" in lower_msg or ("ahmedabad" in lower_msg and "to" in lower_msg):
                 source = "Ahmedabad"
             elif "from delhi" in lower_msg:
                 source = "Delhi"
@@ -220,31 +223,33 @@ Return JSON only.
             elif "from pune" in lower_msg:
                 source = "Pune"
 
+        source_lower = source.lower() if source else "unknown"
+
         if to_match:
             extracted_dest = to_match.group(1).strip().title()
-            if extracted_dest and extracted_dest.lower() != source.lower():
+            if extracted_dest and extracted_dest.lower() != source_lower:
                 if not destinations or destinations == ["Unknown"] or not is_mod:
                     destinations = [extracted_dest]
 
         # Safety: Purge source city completely from destinations list
         if source and source != "Unknown":
-            destinations = [d for d in destinations if d.lower() != source.lower()]
+            destinations = [d for d in destinations if d and isinstance(d, str) and d.lower() != source_lower]
 
         if not destinations or destinations == ["Unknown"]:
-            if "delhi" in lower_msg and source.lower() != "delhi":
+            if "delhi" in lower_msg and source_lower != "delhi":
                 destinations = ["Delhi"]
-            elif "vadodara" in lower_msg and source.lower() != "vadodara":
+            elif "vadodara" in lower_msg and source_lower != "vadodara":
                 destinations = ["Vadodara"]
-            elif "mumbai" in lower_msg and source.lower() != "mumbai":
+            elif "mumbai" in lower_msg and source_lower != "mumbai":
                 destinations = ["Mumbai"]
-            elif "jaipur" in lower_msg and source.lower() != "jaipur":
+            elif "jaipur" in lower_msg and source_lower != "jaipur":
                 destinations = ["Jaipur"]
             elif "taranga" in lower_msg:
                 destinations = ["Taranga Hills"]
             elif "dakor" in lower_msg:
                 destinations = ["Dakor"]
             else:
-                destinations = ["Delhi" if source.lower() != "delhi" else "Mumbai"]
+                destinations = ["Delhi" if source_lower != "delhi" else "Mumbai"]
 
         primary_dest = destinations[0] if destinations else "Delhi"
         all_dest_str = ", ".join(destinations)
