@@ -23,19 +23,39 @@ def fetch_api_places(destination: str) -> list:
         return []
 
     try:
-        # Step 1: Geocode destination
-        geo_url = fgeo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&filter=countrycode:in&apiKey={geo_key}"
-        geo_res = requests.get(geo_url, timeout=6).json()
-        
-        if not geo_res.get("features"):
+        # Step 1: Geocode destination with smart variant resolution
+        lon, lat = None, None
+        queries = [destination]
+        if "hills" in destination.lower():
+            queries.append(destination.replace("Hills", "Hill").replace("hills", "hill"))
+        if " " in destination:
+            queries.append(destination.split()[0])
+
+        for q in queries:
+            try:
+                geo_url = f"https://api.geoapify.com/v1/geocode/search?text={q}&filter=countrycode:in&apiKey={geo_key}"
+                geo_res = requests.get(geo_url, timeout=5).json()
+                for f in geo_res.get("features", []):
+                    formatted = f.get("properties", {}).get("formatted", "")
+                    name = f.get("properties", {}).get("name", "")
+                    first_word = q.lower().split()[0]
+                    if first_word in formatted.lower() or first_word in name.lower() or len(geo_res.get("features", [])) == 1:
+                        lon, lat = f["geometry"]["coordinates"]
+                        break
+                if lon is not None:
+                    break
+            except Exception:
+                pass
+
+        if lon is None:
+            # Fallback to global search
             geo_url = f"https://api.geoapify.com/v1/geocode/search?text={destination}&apiKey={geo_key}"
-            geo_res = requests.get(geo_url, timeout=6).json()
-            return []
+            geo_res = requests.get(geo_url, timeout=5).json()
+            if geo_res.get("features"):
+                lon, lat = geo_res["features"][0]["geometry"]["coordinates"]
 
-        if not geo_res.get("features"):
+        if lon is None:
             return []
-
-        lon, lat = geo_res["features"][0]["geometry"]["coordinates"]
 
         # Step 2: Fetch tourism and attraction places near coordinates
         places_url = (

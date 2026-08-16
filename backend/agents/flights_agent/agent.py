@@ -30,13 +30,33 @@ def geocode_city(city: str):
     """Geocodes city using Geoapify with Open-Meteo fallback."""
     geo_key = os.getenv("GEOAPIFY_API_KEY")
     if geo_key and geo_key != "your_geoapify_key_here":
+        queries = [city]
+        if "hills" in city.lower():
+            queries.append(city.replace("Hills", "Hill").replace("hills", "hill"))
+        if " " in city:
+            queries.append(city.split()[0])
+
+        for q in queries:
+            try:
+                r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={q}&filter=countrycode:in&apiKey={geo_key}", timeout=5).json()
+                for f in r.get("features", []):
+                    formatted = f.get("properties", {}).get("formatted", "")
+                    name = f.get("properties", {}).get("name", "")
+                    first_word = q.lower().split()[0]
+                    if first_word in formatted.lower() or first_word in name.lower() or len(r.get("features", [])) == 1:
+                        lon, lat = f["geometry"]["coordinates"]
+                        return lat, lon
+            except Exception as e:
+                print(f"[FlightsAgent] Geoapify geocode error: {e}")
+
+        # Global fallback if not found in India
         try:
             r = requests.get(f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}", timeout=5).json()
             if r.get("features"):
                 lon, lat = r["features"][0]["geometry"]["coordinates"]
                 return lat, lon
-        except Exception as e:
-            print(f"[FlightsAgent] Geoapify geocode error: {e}")
+        except Exception:
+            pass
 
     try:
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
@@ -50,7 +70,7 @@ def geocode_city(city: str):
 
     return None, None
 
-def fetch_api_route_info(source: str, destination: str) -> str:
+def fetch_api_route_info(source: str, destination: str):
     """Uses geocoding and distance calculations to get accurate road and air distances."""
     try:
         s_lat, s_lon = geocode_city(source)
@@ -62,15 +82,16 @@ def fetch_api_route_info(source: str, destination: str) -> str:
             approx_drive_hours = round(approx_drive_km / 65, 1)
             approx_cab_fare = round(approx_drive_km * 14)
 
-            return (
+            text = (
                 f"- Road Distance: ~{approx_drive_km} km\n"
                 f"- Estimated Drive Time: ~{approx_drive_hours} hours\n"
                 f"- Estimated Cab Fare: ₹{approx_cab_fare:,}"
             )
+            return text, approx_drive_km
     except Exception as e:
         print(f"[FlightsAgent] Route distance API failed: {e}")
 
-    return ""
+    return "", None
 
 def search_query(query: str, max_res: int = 3) -> list:
     """Helper to query Tavily with DDGS fallback."""
@@ -96,17 +117,21 @@ def search_query(query: str, max_res: int = 3) -> list:
 
 def search_flights(source: str, destination: str) -> str:
     """Searches live web specifically for Flight options, Train options, and Road distances."""
-    route_info = fetch_api_route_info(source, destination)
-    
-    # 1. Flights Search with multiple airlines
-    flight_query = f"flights from {source} to {destination} Indigo Air India SpiceJet ticket fare price INR"
-    flight_results = search_query(flight_query, max_res=3)
+    route_info, drive_km = fetch_api_route_info(source, destination)
+    output_sections = []
+
+    # 1. Flights Search (Only if route is long distance >= 250 km)
+    if drive_km is not None and drive_km < 250:
+        flight_results = [
+            f"- Not applicable for this short distance (~{drive_km} km). Direct road drive, cab, bus, or local train is recommended."
+        ]
+    else:
+        flight_query = f"flights from {source} to {destination} Indigo Air India SpiceJet ticket fare price INR"
+        flight_results = search_query(flight_query, max_res=3)
 
     # 2. Trains Search
     train_query = f"trains from {source} to {destination} IRCTC train name departure arrival timing fare INR"
     train_results = search_query(train_query, max_res=3)
-
-    output_sections = []
 
     if flight_results:
         output_sections.append(

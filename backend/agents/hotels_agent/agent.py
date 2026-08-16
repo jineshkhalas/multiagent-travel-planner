@@ -23,18 +23,39 @@ def fetch_api_hotels(city: str) -> list:
         return []
 
     try:
-        # Step 1: Geocode city
-        geo_url = f"https://api.geoapify.com/v1/geocode/search?text={city}&filter=countrycode:in&apiKey={geo_key}"
-        geo_res = requests.get(geo_url, timeout=6).json()
+        # Step 1: Geocode city with smart variant resolution
+        lon, lat = None, None
+        queries = [city]
+        if "hills" in city.lower():
+            queries.append(city.replace("Hills", "Hill").replace("hills", "hill"))
+        if " " in city:
+            queries.append(city.split()[0])
 
-        if not geo_res.get("features"):
+        for q in queries:
+            try:
+                geo_url = f"https://api.geoapify.com/v1/geocode/search?text={q}&filter=countrycode:in&apiKey={geo_key}"
+                geo_res = requests.get(geo_url, timeout=5).json()
+                for f in geo_res.get("features", []):
+                    formatted = f.get("properties", {}).get("formatted", "")
+                    name = f.get("properties", {}).get("name", "")
+                    first_word = q.lower().split()[0]
+                    if first_word in formatted.lower() or first_word in name.lower() or len(geo_res.get("features", [])) == 1:
+                        lon, lat = f["geometry"]["coordinates"]
+                        break
+                if lon is not None:
+                    break
+            except Exception:
+                pass
+
+        if lon is None:
+            # Fallback to global search
             geo_url = f"https://api.geoapify.com/v1/geocode/search?text={city}&apiKey={geo_key}"
-            geo_res = requests.get(geo_url, timeout=6).json()
+            geo_res = requests.get(geo_url, timeout=5).json()
+            if geo_res.get("features"):
+                lon, lat = geo_res["features"][0]["geometry"]["coordinates"]
 
-        if not geo_res.get("features"):
+        if lon is None:
             return []
-
-        lon, lat = geo_res["features"][0]["geometry"]["coordinates"]
 
         # Step 2: Fetch hotels and accommodation places near coordinates
         places_url = (

@@ -92,9 +92,12 @@ STRICT OUTPUT TEMPLATE:
 ### Flights & Transit Options
 
 #### Flights
-- **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
-- **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
-- **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+- If distance is short (< 250 km) or a 1-day road trip without commercial flights, write:
+  - **Direct Flights**: Not applicable for this short distance (Direct road drive, cab, bus, or local train is recommended).
+- Otherwise (for long distance travel with airports):
+  - **[Airline 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+  - **[Airline 2]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
+  - **[Airline 3]**: Dep: [Time] - Arr: [Time] | Price: ₹[Realistic Fare between 2,500 and 8,500] | Duration: [X]h [Y]m
 
 #### Trains
 - **[Train Name & Number 1]**: Dep: [Time] - Arr: [Time] | Price: ₹[Amount] | Duration: [X]h [Y]m
