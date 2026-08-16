@@ -60,8 +60,8 @@ def fetch_api_hotels(city: str) -> list:
         # Step 2: Fetch hotels and accommodation places near coordinates
         places_url = (
             f"https://api.geoapify.com/v2/places?"
-            f"categories=accommodation.hotel,accommodation.resort,accommodation.guest_house&"
-            f"filter=circle:{lon},{lat},25000&limit=6&apiKey={geo_key}"
+            f"categories=accommodation.hotel,accommodation.resort,accommodation.guest_house,accommodation.motel&"
+            f"filter=circle:{lon},{lat},35000&limit=12&apiKey={geo_key}"
         )
         places_res = requests.get(places_url, timeout=6).json()
 
@@ -75,26 +75,28 @@ def fetch_api_hotels(city: str) -> list:
 
         return verified_hotels
     except Exception as e:
-        print(f"[HotelsAgent] Geoapify API hotel search error: {e}")
+        print(f"[HotelsAgent] Geoapify API search error: {e}")
         return []
 
-def search_query(query: str, max_res: int = 3) -> list:
-    """Helper to query Tavily with DDGS fallback."""
+def fetch_web_tariffs(city: str) -> list:
+    """Searches live web for real room prices and booking tariffs."""
+    query = f"hotels and resorts in {city} luxury 5 star 3 star budget room tariff price per night INR"
+    
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
             client = TavilyClient(api_key=tavily_key)
-            response = client.search(query=query, search_depth="basic", max_results=max_res)
-            results = [f"- {res['title']}: {res['content'][:180]}" for res in response.get('results', [])]
+            response = client.search(query=query, search_depth="basic", max_results=5)
+            results = [f"- {res['title']}: {res['content'][:200]}" for res in response.get('results', [])]
             if results:
                 return results
         except Exception as e:
             print(f"[HotelsAgent] Tavily search error: {e}")
 
     try:
-        results = DDGS().text(query, max_results=max_res)
+        results = DDGS().text(query, max_results=5)
         if results:
-            return [f"- {res['title']}: {res['body'][:180]}" for res in results]
+            return [f"- {res['title']}: {res['body'][:200]}" for res in results]
     except Exception as e:
         print(f"[HotelsAgent] DuckDuckGo search error: {e}")
 

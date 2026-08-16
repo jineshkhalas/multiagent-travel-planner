@@ -60,8 +60,8 @@ def fetch_api_places(destination: str) -> list:
         # Step 2: Fetch tourism and attraction places near coordinates
         places_url = (
             f"https://api.geoapify.com/v2/places?"
-            f"categories=tourism.sights,tourism.attraction,entertainment.culture,leisure.park&"
-            f"filter=circle:{lon},{lat},25000&limit=5&apiKey={geo_key}"
+            f"categories=tourism.sights,tourism.attraction,entertainment.culture,leisure.park,heritage&"
+            f"filter=circle:{lon},{lat},35000&limit=15&apiKey={geo_key}"
         )
         places_res = requests.get(places_url, timeout=6).json()
 
@@ -80,13 +80,13 @@ def fetch_api_places(destination: str) -> list:
 
 def fetch_web_attractions(destination: str) -> list:
     """Searches live web for ticket prices, timings, and travel costs with compact snippets."""
-    query = f"top places to visit in {destination} entry ticket fee price distance transport food cost INR"
+    query = f"top 10 tourist places to visit in {destination} sightseeing itinerary entry ticket fee price INR"
     
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key and tavily_key != "your_tavily_key_here":
         try:
             client = TavilyClient(api_key=tavily_key)
-            response = client.search(query=query, search_depth="basic", max_results=3)
+            response = client.search(query=query, search_depth="basic", max_results=6)
             results = [f"- {res['title']}: {res['content'][:200]}" for res in response.get('results', [])]
             if results:
                 return results
@@ -94,7 +94,7 @@ def fetch_web_attractions(destination: str) -> list:
             print(f"[AttractionsAgent] Tavily search error: {e}")
 
     try:
-        results = DDGS().text(query, max_results=3)
+        results = DDGS().text(query, max_results=6)
         if results:
             return [f"- {res['title']}: {res['body'][:200]}" for res in results]
     except Exception as e:
